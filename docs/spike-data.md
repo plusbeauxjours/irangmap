@@ -123,3 +123,13 @@
 - **robots.txt (게이트 ⑥)**: `umppa.seoul.go.kr` → `Allow: /icare/`(서울형 키즈카페 목록·예약 경로 허용, `/pCmsMngr/`만 금지). `map.naver.com` → **`User-agent: * Disallow: /`** + "AI 학습·RAG 목적 봇 접근 엄격 금지" 명시, `m.place.naver.com`·`pcmap.place.naver.com`은 robots.txt 없이 SPA 응답. → 네이버 플레이스는 robots 차원에서도 크롤 대상이 아니다. `naver_aux`는 계획대로 기본 꺼짐(L1)으로 두되, **켜는 결정은 robots.txt Disallow를 인지한 상태에서** 해야 한다.
 - 파생 산출물: `kidscafe-pipeline export geojson --out data/derived/venues.geojson` (지도 MVP가 DB 전에 쓸 브릿지, gitignored).
 
+## 2026-09-19 — 휴게음식점 전량 완료 + **최종 union (게이트 ①·② 완료)**
+
+- 전량 647,338행 수집 완료(워커 3개 병렬, 6,474콜, 잘린 첫 파일은 복구 → 중복 26행 제외하면 distinct MNG_NO 647,338 = totalCount와 일치). 파일: `rest_cafes.part1/part1b/part2/part3.jsonl.gz`.
+- `BZSTAT_SE_NM` distinct **32개**(코드 목록). **`키즈카페` 1,456행, 영업 626**(업태=키즈카페 590 + 상호로만 잡힌 36: 기타 휴게음식점 15·커피숍 11·일반조리판매 6 …). 좌표 결측 34(5.4%). **홈페이지(`HPG`) 채워진 키즈카페 0건** → 공식 채널 발견은 인허가 데이터로는 불가, 프랜차이즈 사전·카카오 장소 ID·검색으로. 다중이용업소여부 Y 169 / N 457.
+- 휴게음식점 키즈(영업·좌표) 592 vs 놀이시설∪테마파크: **strong 368 · weak 17 · none 207** → 62%가 이미 다른 소스에 있음.
+- **최종 union N = 2,845** = 놀이시설 A013 운영 1,905 + 테마파크 키즈 추가 716 + 휴게음식점 키즈 추가 224. 다중 소스 교차 확인 ~500곳. 게이트 ① 통과(N<20,000 → 클라이언트 클러스터링), 게이트 ②는 업태가 코드 목록이라 recall 측정 불필요(경기도 대조는 선택).
+- 시도 표기 불일치: 놀이시설 `ronaAddr`는 `경기`·`서울` 축약형, 인허가는 `경기도`·`서울특별시` → 시도 정규화 사전 필요(normalize에 추가 예정).
+- 산출물: `data/derived/venues.geojson`(2,845 features, 0.97MB) · `data/derived/seeds-report.json`.
+- CLI 주의: `pnpm pipeline …`은 `uv run --directory apps/pipeline`이라 cwd가 바뀐다 → 상대 경로 인자는 repo 루트 기준으로 풀도록 `_repo_path` 적용.
+

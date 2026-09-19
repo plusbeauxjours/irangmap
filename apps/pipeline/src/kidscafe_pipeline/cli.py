@@ -6,7 +6,7 @@ from pathlib import Path
 import typer
 
 from . import reports
-from .config import get_settings
+from .config import REPO_ROOT, get_settings
 from .sources import fire_mu, playground, rest_cafes, themepark_other
 from .sources.datagokr import PLAYGROUND_PAGING, DataGoKrClient
 
@@ -27,6 +27,13 @@ def _echo(stats: dict) -> None:
     typer.echo(json.dumps(stats, ensure_ascii=False, indent=2))
 
 
+def _repo_path(p: Path | None) -> Path | None:
+    """`uv run --directory`가 cwd를 바꾸므로 상대 경로는 repo 루트 기준으로 푼다."""
+    if p is None or p.is_absolute():
+        return p
+    return REPO_ROOT / p
+
+
 @ingest_app.command("fire-mu")
 def ingest_fire_mu(
     path: Path | None = typer.Option(
@@ -35,7 +42,7 @@ def ingest_fire_mu(
     dry_run: bool = typer.Option(False, "--dry-run", help="DB에 쓰지 않고 집계만 출력"),
 ) -> None:
     """소방청 다중이용업소 CSV에서 키즈카페업 행만 원본으로 적재한다."""
-    csv_path = path or get_settings().data_dir / "fire_mu.download"
+    csv_path = _repo_path(path) or get_settings().data_dir / "fire_mu.download"
     rows = fire_mu.read_rows(csv_path)
     stats = fire_mu.summarize(rows)
     if dry_run:
@@ -81,6 +88,7 @@ def ingest_themepark_other(
         if limit and len(items) >= limit:
             break
     stats = {**themepark_other.summarize(items), "api_calls": client.calls}
+    save = _repo_path(save)
     if save:
         save.write_text(json.dumps(items, ensure_ascii=False), encoding="utf-8")
         stats["saved_to"] = str(save)
@@ -125,6 +133,7 @@ def ingest_rest_cafes(
         settings.data_go_kr_key, daily_limit=settings.datagokr_daily_limit
     )
     summary = rest_cafes.Summary()
+    save = _repo_path(save)
     # 재개(start_page>1)면 이어 쓴다. 새 pull이면 덮어쓴다.
     out = (
         gzip.open(save, "at" if start_page > 1 else "wt", encoding="utf-8")
@@ -187,6 +196,7 @@ def ingest_playground(
         client.iter_items(settings.datagokr_playground_url, paging=PLAYGROUND_PAGING)
     )
     stats = {**playground.summarize(items), "api_calls": client.calls, "dry_run": True}
+    save = _repo_path(save)
     if save:
         with gzip.open(save, "wt", encoding="utf-8") as out:
             for it in items:
@@ -200,7 +210,7 @@ def report_seeds(
     raw_dir: Path | None = typer.Option(None, help="원본 폴더. 기본 data/raw"),
 ) -> None:
     """놀이시설 A013 ∪ 테마파크(키즈) ∪ 휴게음식점(키즈) — 매칭 tier와 union N 추정."""
-    raw = raw_dir or get_settings().data_dir
+    raw = _repo_path(raw_dir) or get_settings().data_dir
     pg = reports.load_playground_a013(raw / "playground.jsonl.gz")
     tp, tp_cats = reports.load_themepark_kids(raw / "themepark_other.json")
     rc, rc_stats = reports.load_rest_cafes_kids(str(raw / "rest_cafes.part*.jsonl.gz"))
@@ -238,7 +248,8 @@ def export_geojson(
     raw_dir: Path | None = typer.Option(None, help="원본 폴더. 기본 data/raw"),
 ) -> None:
     """3소스 union(strong 매칭 병합)을 지도 MVP용 GeoJSON으로 내보낸다."""
-    raw = raw_dir or get_settings().data_dir
+    raw = _repo_path(raw_dir) or get_settings().data_dir
+    out = _repo_path(out) or out
     pg = reports.load_playground_a013(raw / "playground.jsonl.gz")
     tp, _ = reports.load_themepark_kids(raw / "themepark_other.json")
     rc, _ = reports.load_rest_cafes_kids(str(raw / "rest_cafes.part*.jsonl.gz"))
