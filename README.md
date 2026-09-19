@@ -1,0 +1,73 @@
+# kidscafe — 전국 키즈카페 지도
+
+전국 키즈카페를 공공데이터로 시드하고, 연령·보호자 요금·놀이공간 같은 **출처가 붙은 속성**을 얹어 에어비앤비식 "리스트 ↔ 지도"로 보여주는 서비스의 저장소다. 1~3인 팀 전제. 계획 전문은 `~/.claude/plans/harmonic-dazzling-allen.md`, 데이터 스파이크 결과는 [docs/spike-data.md](docs/spike-data.md).
+
+핵심 논지: 지도와 장소 목록은 커모디티다(네이버·카카오·애기야가자). 차별점은 ① 합법적 전국 시드 + 폐업 신선도 파이프라인 ② 키즈카페 전용 속성 레이어. 예약 수수료 모델은 하지 않는다(놀이의발견 2024-12 폐업 반면교사).
+
+## 구조
+
+```
+apps/web        Next.js 15 App Router. route handler가 Postgres를 직접 조회한다 (별도 API 서버 없음).
+apps/pipeline   Python 3.12 (uv). 공공데이터 수집·정규화·매칭·분류. alembic이 스키마의 유일한 소유자.
+                sources/  datagokr(페이징 클라이언트) · themepark_other · rest_cafes · playground · fire_mu
+                normalize(EPSG:5174→WGS84) · geocode(VWorld) · names(rapidfuzz) · resolve(격자+유사도 tier)
+                classify(프랜차이즈 사전+규칙) · reports(3소스 union) · loader/runs(DB 적재·run_id)
+compose.yaml    postgis/postgis:17-3.5 (localhost:5433)
+data/raw/       공공데이터 원본 (gitignored)
+docs/           스파이크·설계 노트
+```
+
+## 데이터 출처 (시드 → 보강)
+
+| 출처 | 규모 | 역할 |
+|---|---|---|
+| 행정안전부_문화_테마파크업(기타) — data.go.kr 15155250(API `…/amusement_facilities_other/info`) | 7,241행(영업 2,627), 매일 갱신 | **1차 시드**. 키즈카페·트램폴린파크 외에 캠핑장·오락실·축제도 섞여 있어 판별 단계 필요 |
+| 행정안전부_식품_휴게음식점 — 15154921(API) / 15006730(file) | 561,397행, 매일 갱신 | **2차 시드**, `업태구분명` 매처로 카페형 키즈카페 추출 |
+| 경기도_휴게음식점(키즈카페) 현황 — 15057362 | 경기도 | 매처 recall 캘리브레이션 |
+| 행정안전부_전국어린이놀이시설정보서비스 — 15124519 (API `…/pfc3/getPfctInfo3`) | 85,338건, 키즈카페 후보(놀이제공영업소+식품접객업소) 3,280 | **핵심 시드**: 설치장소 코드로 판별, WGS84 좌표, 실내외·공공/민간·안전검사 수리일 |
+| 소방청_다중이용업소 영업장별 고유 일련번호 — 15083979 | 키즈카페업 8행 | 시드 아님. `다중이용업소` 플래그 교차만 |
+| 서울 우리동네키움포털 | 서울형 300개소 | 공공 키즈카페 목록·잔여석 |
+| 업소 공식 홈페이지·인스타그램 | — | 속성(연령·요금·놀이공간) LLM 추출, 출처 URL 필수 |
+
+## 수집 가드레일 (깨면 안 되는 선)
+
+- 카카오 로컬 API 결과는 **장소 ID만** 저장. 구글 Places는 실시간 fetch만(place_id 제외 저장 금지). 네이버 검색 API는 LLM 입력 금지 조항 때문에 쓰지 않는다.
+- `naver_aux`(네이버 플레이스 보조 크롤)와 `umppa`는 킬스위치 기본 꺼짐, 단일 IP, 로그인 없음, ≥5초/건, **프록시·VPN 우회 금지**, 차단되면 중단. `NAVER_AUX_LEVEL=1`은 포인터(URL·홈페이지·인스타 링크)만. 어떤 단계에서도 리뷰·사진·평점·리뷰수·방문자수 저장 금지.
+- 서울형 키즈카페 "예약 오픈 알림"은 서울시 협의 전 만들지 않는다.
+
+## 개발환경
+
+요구사항: Python 3.12+, `uv`, Node.js 22.12+, `pnpm` 9.12.1, Docker.
+
+```bash
+cp .env.example .env            # DATA_GO_KR_KEY 등 채우기
+uv sync --directory apps/pipeline
+pnpm install
+docker compose up -d postgres
+uv run --directory apps/pipeline alembic upgrade head
+```
+
+파이프라인 CLI — `ingest`는 `--dry-run`(DB에 쓰지 않고 집계만)과 `--save`(원본 저장)를 지원한다. DB 적재 경로는 마이그레이션 적용 후 열린다.
+
+```bash
+pnpm pipeline ingest themepark-other --dry-run --save data/raw/themepark_other.json   # 7,241건, 73콜
+pnpm pipeline ingest playground --dry-run --save data/raw/playground.jsonl.gz          # 85,338건, 86콜
+pnpm pipeline ingest rest-cafes --dry-run --save data/raw/rest_cafes.jsonl.gz          # 647k건, 6,474콜(--start-page로 재개)
+pnpm pipeline ingest fire-mu --dry-run                                                 # 소방청 CSV(플래그용)
+pnpm pipeline report seeds                                                             # 3소스 union·매칭 tier (DB 불필요)
+pnpm pipeline export geojson --out data/derived/venues.geojson                         # 지도 MVP용 브릿지
+```
+
+`.env`에 필요한 키: `DATA_GO_KR_KEY` + `DATAGOKR_THEMEPARK_URL`/`DATAGOKR_RESTCAFE_URL`/`DATAGOKR_PLAYGROUND_URL`(엔드포인트, `.env.example` 참고) · `VWORLD_KEY`(지오코딩) · `GG_DATA_KEY`(경기데이터드림, 선택). 오너가 더 준비할 것은 [docs/owner-todo.md](docs/owner-todo.md).
+
+전체 검증:
+
+```bash
+pnpm lint && pnpm test && pnpm build && docker compose config
+```
+
+스키마를 바꿀 때는 `apps/pipeline/src/kidscafe_pipeline/models.py`를 고친 뒤 마이그레이션을 만든다.
+
+```bash
+uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
+```

@@ -1,0 +1,31 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+.venv/
+.uv-cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.key
+*.pem
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+.next/
+next-env.d.ts
+var/
+# 공공데이터 원본 (수십 MB, 재다운로드 가능)
+data/raw/
+# 파생 산출물 (원본에서 재생성 가능)
+data/derived/
+
+# OMC 세션 상태 (도구 로컬)
+.omc/

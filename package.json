@@ -1,0 +1,21 @@
+{
+  "name": "kidscafe",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.12.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev:web": "pnpm --filter @kidscafe/web dev",
+    "lint:web": "pnpm --filter @kidscafe/web lint",
+    "test:web": "pnpm --filter @kidscafe/web test",
+    "build:web": "pnpm --filter @kidscafe/web build",
+    "lint:pipeline": "uv run --directory apps/pipeline ruff check .",
+    "test:pipeline": "uv run --directory apps/pipeline pytest",
+    "pipeline": "uv run --directory apps/pipeline kidscafe-pipeline",
+    "lint": "pnpm lint:web && pnpm lint:pipeline",
+    "test": "pnpm test:web && pnpm test:pipeline",
+    "build": "pnpm build:web"
+  }
+}
