@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_FILTERS, filterVenues, inBounds, parseVenues, type Bounds, type Filters, type Venue } from "@/lib/venues";
 
 import { FiltersBar } from "./Filters";
+import { VenueDetail } from "./VenueDetail";
 import { VenueList } from "./VenueList";
 
 const KO_COLLATOR = new Intl.Collator("ko");
@@ -77,7 +78,11 @@ export function Explorer() {
         <FiltersBar filters={filters} onChange={setFilters} total={venues.length} visible={visible.length} />
         {error && <p className="m-4 rounded border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <VenueList venues={visible} hoveredId={hoveredId} selectedId={selectedId} onHover={setHoveredId} onSelect={onSelect} />
+          {selected ? (
+            <VenueDetail venue={selected} onBack={() => setSelectedId(null)} />
+          ) : (
+            <VenueList venues={visible} hoveredId={hoveredId} selectedId={selectedId} onHover={setHoveredId} onSelect={onSelect} />
+          )}
         </div>
       </aside>
       <main className="order-1 min-h-0 md:order-2">

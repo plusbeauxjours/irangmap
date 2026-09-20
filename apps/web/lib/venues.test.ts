@@ -1,4 +1,4 @@
-import { DEFAULT_FILTERS, filterVenues, inBounds, normalizeSido, parseVenues, type Venue } from "./venues";
+import { ATTRIBUTE_SCHEMA, DEFAULT_FILTERS, filterVenues, inBounds, linkouts, normalizeSido, parseVenues, type Venue } from "./venues";
 
 const gj = {
   features: [
@@ -25,4 +25,17 @@ test("filterVenues applies category, multi-source, public and query filters", ()
 test("inBounds keeps only venues inside the viewport", () => {
   const seoul = { west: 126.7, south: 37.4, east: 127.2, north: 37.7 };
   expect(venues.filter((v) => inBounds(v, seoul)).map((v) => v.id)).toEqual([1, 3]);
+});
+
+
+test("linkouts build encoded search deep links for each external service", () => {
+  const links = linkouts(venues[2]);
+  expect(links.map((l) => l.key)).toEqual(["kakao", "naver", "google", "instagram"]);
+  expect(links[0].href).toContain(encodeURIComponent("서울형 키즈카페 시립1호점 서울 동작구 노량진로 10"));
+  expect(links[3].href).toContain(encodeURIComponent("서울형키즈카페시립1호점"));
+});
+
+test("attribute schema covers what parents check first", () => {
+  const keys = ATTRIBUTE_SCHEMA.map((a) => a.key);
+  expect(keys).toEqual(expect.arrayContaining(["age_range", "guardian_fee", "socks", "notes", "photos"]));
 });

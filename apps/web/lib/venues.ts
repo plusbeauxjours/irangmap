@@ -133,3 +133,28 @@ export function toFeatureCollection(venues: Venue[]) {
     })),
   };
 }
+
+
+/** 외부 서비스 검색 딥링크 — 데이터 저장 없이 링크만 (카카오 place_id·네이버는 링크아웃 원칙). */
+export function linkouts(v: Venue) {
+  const q = encodeURIComponent(`${v.name} ${v.sido}`.trim());
+  const qAddr = encodeURIComponent(`${v.name} ${v.addr}`.trim());
+  return [
+    { key: "kakao", label: "카카오맵", href: `https://map.kakao.com/?q=${qAddr}` },
+    { key: "naver", label: "네이버 지도", href: `https://map.naver.com/p/search/${q}` },
+    { key: "google", label: "구글 검색", href: `https://www.google.com/search?q=${qAddr}` },
+    { key: "instagram", label: "인스타그램", href: `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(v.name.replace(/\s+/g, ""))}` },
+  ];
+}
+
+/** 부모가 실제로 보는 이용 정보. 값은 공식 채널·사업자 확인 후 채운다 (Phase 2). */
+export const ATTRIBUTE_SCHEMA = [
+  { key: "age_range", label: "이용 연령", hint: "예: 12개월~7세, 초등생 입장 가능" },
+  { key: "guardian_fee", label: "보호자 요금", hint: "보호자 무료/유료, 음료 포함 여부" },
+  { key: "child_fee", label: "아동 요금·시간", hint: "시간제/종일, 추가 시간 요금" },
+  { key: "socks", label: "양말 착용", hint: "미끄럼방지 양말 필수 여부, 현장 판매" },
+  { key: "play_zones", label: "놀이 공간", hint: "볼풀·트램폴린·정글짐·모래·역할놀이·유아존" },
+  { key: "amenities", label: "편의 시설", hint: "어른 카페·식사·수유실·기저귀 교환대·주차" },
+  { key: "notes", label: "유의사항", hint: "보호자 동반 규칙, 예약 필수 여부, 휴무" },
+  { key: "photos", label: "사진", hint: "사업자·이용자 제공 사진" },
+] as const;
