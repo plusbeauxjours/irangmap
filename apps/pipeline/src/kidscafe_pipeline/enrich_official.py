@@ -175,7 +175,13 @@ def attach(
     observed: str,
 ) -> dict[str, Any]:
     index = build_brand_index(results)
-    stats = {"brands": len(index), "brand_scope": 0, "store_scope": 0, "no_data": 0}
+    stats = {
+        "brands": len(index),
+        "brand_scope": 0,
+        "store_scope": 0,
+        "no_data": 0,
+        "phone_filled": 0,
+    }
     for v in venues:
         if v.get("attrs"):
             continue
@@ -195,8 +201,10 @@ def attach(
                 if best.get(f):
                     merged[f] = best[f]
             scope, url = "store", best["_url"]
+            # 매장 목록만 있는 브랜드(쁘띠몽드·점핑몬스터 등)도 전화는 채운다
             if not v.get("phone") and best.get("phone"):
                 v["phone"] = best["phone"]
+                stats["phone_filled"] += 1
         if not any(
             merged.get(f)
             for f in ("age_range", "child_fee", "guardian_fee", "socks", "hours")

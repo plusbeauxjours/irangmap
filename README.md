@@ -101,7 +101,7 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 상세 패널의 이용 연령·보호자 요금·아동 요금·양말·놀이 공간·편의·유의사항·사진은 값마다 **출처 + 확인일**을 달고 채운다.
 
 1. **서울형 키즈카페** — 서울시 우리동네키움포털(`umppa.seoul.go.kr/icare`, robots Allow) 공개 이용안내를 `ingest umppa`로 수집. `export geojson`이 주소를 VWorld로 지오코딩(`data/derived/umppa_geocode_cache.json`)해 300 m 안 이름 유사도(괄호 별칭·구/동 접미 제거, 30 m 안 공공류는 이름 무관)로 union 업소에 붙이고, 없으면 공공 업소로 추가한다(2026-09-20: 140개소 → 병합 71 · 신규 69). 사진은 저장·임베드하지 않고 서울시 원본 링크만 둔다.
-2. **프랜차이즈 공식 사이트** — `data/raw/official/channels.json`(브랜드별 공식·매장목록·이용안내 URL, robots 상태, 렌더 방식)에 적힌 페이지만 `ingest official`로 받아 텍스트(+원본 HTML)로 저장하고, `extract official`이 **Claude Code 헤드리스(`claude -p --json-schema …`)**로 브랜드 공통 값(brand_level)과 매장별 값(stores[])을 뽑는다. API 키가 아니라 로그인된 Claude Code 구독을 쓴다(`extract_claude.py`: `--tools "" --strict-mcp-config --setting-sources ""`로 호출당 오버헤드 ~1.2k 토큰, 프롬프트는 stdin). `export geojson`이 브랜드 공통은 `scope=brand`(상세에 '브랜드 공통 안내' 경고), 매장명 지역 토큰이 맞으면 `scope=store`로 붙인다(`enrich_official.py`).
+2. **프랜차이즈 공식 사이트** — `data/raw/official/channels.json`(브랜드별 공식·매장목록·이용안내 URL, robots 상태, 렌더 방식)에 적힌 페이지만 `ingest official`로 받아 텍스트(+원본 HTML)로 저장하고, `extract official`이 **Claude Code 헤드리스(`claude -p --json-schema …`)**로 브랜드 공통 값(brand_level)과 매장별 값(stores[])을 뽑는다. API 키가 아니라 로그인된 Claude Code 구독을 쓴다(`extract_claude.py`: `--tools "" --strict-mcp-config --setting-sources ""`로 호출당 오버헤드 ~1.2k 토큰, 프롬프트는 stdin). `export geojson`이 브랜드 공통은 `scope=brand`(상세에 '브랜드 공통 안내' 경고), 매장명 지역 토큰이 맞으면 `scope=store`로 붙인다(`enrich_official.py`). 2026-09-20: 바운스 37·뽀로로파크 8곳 부착, 목록만 있는 브랜드는 전화만 보충(30곳).
 3. 롱테일 → 사업자 클레임·이용자 제보.
 4. 사진 → 사업자·이용자 제공분만.
 

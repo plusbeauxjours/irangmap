@@ -101,3 +101,35 @@ def test_attach_prefers_store_over_brand_and_keeps_existing_attrs() -> None:
         b["scope"] == "brand" and b["socks"] and b["child_fee"] is None
     )  # store 페이지 값은 공통값에 안 섞임
     assert venues[2]["attrs"] == {"source": "umppa"}
+
+
+def test_attach_fills_phone_even_without_fee_data() -> None:
+    results = [
+        {
+            "brand": "쁘띠몽드",
+            "url": "https://p/stores",
+            "confidence": 0.8,
+            "observed_at": "2026-09-20",
+            "kind": "store_list",
+            "brand_level": {f: None for f in eo._FIELDS},
+            "stores": [
+                {
+                    "store_name": "쁘띠몽드 동탄점",
+                    "address": "경기 화성시 동탄대로 1",
+                    "phone": "031-000-0000",
+                    **{f: None for f in eo._FIELDS},
+                }
+            ],
+            "store_names": ["쁘띠몽드 동탄점"],
+        }
+    ]
+    venues = [
+        {
+            "name": "쁘띠몽드 동탄",
+            "addr": "경기도 화성시 동탄대로 1",
+            "sources": ["playground:9"],
+        }
+    ]
+    stats = eo.attach(venues, results, generic=set(), observed="2026-09-20")
+    assert stats["phone_filled"] == 1 and stats["no_data"] == 1
+    assert venues[0]["phone"] == "031-000-0000" and "attrs" not in venues[0]

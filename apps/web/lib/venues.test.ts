@@ -1,3 +1,4 @@
+import { firstAmount } from "./facts";
 import { ATTRIBUTE_SCHEMA, DEFAULT_FILTERS, filterVenues, inBounds, linkouts, normalizeSido, parseVenues, type Venue } from "./venues";
 
 const gj = {
@@ -38,4 +39,13 @@ test("linkouts build encoded search deep links for each external service", () =>
 test("attribute schema covers what parents check first", () => {
   const keys = ATTRIBUTE_SCHEMA.map((a) => a.key);
   expect(keys).toEqual(expect.arrayContaining(["age_range", "guardian_fee", "socks", "notes", "photos"]));
+});
+
+
+describe("firstAmount", () => {
+  it("picks the first won amount and marks ranges", () => {
+    expect(firstAmount("2시간권 25,000원, 200분 32,000원")).toBe("25,000원~");
+    expect(firstAmount("보호자입장권 8,000원")).toBe("8,000원");
+    expect(firstAmount("무료")).toBeNull();
+  });
 });

@@ -9,6 +9,7 @@
 import glob
 import gzip
 import json
+import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,9 @@ def _read_jsonl_gz(paths: list[str]) -> list[dict[str, Any]]:
             continue  # 스트림 끝이 안 닫힌 파일: 여기까지 읽은 것으로 진행
     return out
 
+
+# 일부 구청은 폐업을 영업상태 대신 상호에 '(폐)'로 표기한다(부산 해운대구 등)
+CLOSED_NAME_RE = re.compile(r"\(폐\)|폐업|폐점")
 
 META: dict[str, dict[str, Any]] = {}  # f"{source}:{key}" → 주소·카테고리 등 부가 정보
 
@@ -148,7 +152,11 @@ def union_report(
         tiers_rc[m.tier] += 1
         if m.tier != "strong":
             rc_new.append(c)
-    venues = _merge(playground, themepark, restcafes, base_index, index2)
+    venues = [
+        v
+        for v in _merge(playground, themepark, restcafes, base_index, index2)
+        if not CLOSED_NAME_RE.search(v["name"])
+    ]
     return {
         "venues": venues,
         "playground_a013_active": len(playground),

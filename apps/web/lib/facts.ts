@@ -9,17 +9,25 @@ export interface Fact {
   href?: string | null;
 }
 
+/** "2시간권 25,000원, 200분 32,000원" → "25,000원~" (금액이 둘 이상이면 ~). */
+export function firstAmount(text: string): string | null {
+  const m = text.match(/(\d{1,3}(?:,\d{3})+|\d{4,6})\s*원/g);
+  if (!m) return null;
+  const first = m[0].replace(/\s+/g, "");
+  return m.length > 1 ? `${first}~` : first;
+}
+
 export function compactFacts(a: VenueAttrs | null | undefined): Fact[] {
   let age = a?.age_range ? a.age_range.replace(/\s*\(연나이\)\s*$/, "") : null;
   if (age && age.length > 12) age = "안내 있음";
   let fee: string | null = null;
   if (a?.child_fee_krw === 0) fee = "무료";
   else if (typeof a?.child_fee_krw === "number") fee = `${a.child_fee_krw.toLocaleString()}원`;
-  else if (a?.child_fee) fee = a.child_fee.length > 12 ? "요금 안내" : a.child_fee;
+  else if (a?.child_fee) fee = firstAmount(a.child_fee) ?? (a.child_fee.length > 12 ? "요금 안내" : a.child_fee);
 
   let guardian: string | null = null;
   if (a?.guardian_fee === "보호자 무료") guardian = "무료";
-  else if (a?.guardian_fee) guardian = /무료/.test(a.guardian_fee) ? "일부 무료" : "안내 있음";
+  else if (a?.guardian_fee) guardian = /무료/.test(a.guardian_fee) ? "일부 무료" : firstAmount(a.guardian_fee) ?? "안내 있음";
 
   let parking: string | null = null;
   if (a?.parking) {

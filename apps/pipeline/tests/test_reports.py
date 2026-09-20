@@ -64,3 +64,11 @@ def test_merge_attaches_sources_and_geojson_has_one_feature_per_venue() -> None:
     assert gj["features"][0]["properties"]["id"] == 1 and gj["features"][0]["geometry"][
         "coordinates"
     ] == [127.0, 37.5]
+
+
+def test_closed_name_regex() -> None:
+    from kidscafe_pipeline.reports import CLOSED_NAME_RE
+
+    assert CLOSED_NAME_RE.search("릴리펏 마린시티점(폐)")
+    assert CLOSED_NAME_RE.search("모모로 키즈카페 폐업")
+    assert not CLOSED_NAME_RE.search("폐광 테마 키즈카페")
