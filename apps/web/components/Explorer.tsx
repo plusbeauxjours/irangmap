@@ -12,6 +12,27 @@ import { VenueList } from "./VenueList";
 
 const KO_COLLATOR = new Intl.Collator("ko");
 
+/** 데이터가 아직 fetch되기 전(venues.length === 0) 리스트 자리에 보이는 뼈대. */
+function ListSkeleton() {
+  return (
+    <ul className="animate-pulse divide-y divide-neutral-100" aria-hidden="true">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <li key={i} className="flex gap-3 px-4 py-3">
+          <span className="h-8 w-8 shrink-0 rounded-full bg-neutral-200" />
+          <div className="min-w-0 flex-1 space-y-2 py-0.5">
+            <div className="h-3.5 w-2/3 rounded bg-neutral-200" />
+            <div className="h-2.5 w-4/5 rounded bg-neutral-100" />
+            <div className="flex gap-1.5">
+              <div className="h-3.5 w-12 rounded-full bg-neutral-100" />
+              <div className="h-3.5 w-14 rounded-full bg-neutral-100" />
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 const MapView = dynamic(() => import("./MapView").then((m) => m.MapView), {
   ssr: false,
   loading: () => <div className="flex h-full items-center justify-center text-sm text-neutral-500">지도를 불러오는 중…</div>,
@@ -77,16 +98,27 @@ export function Explorer() {
 
   return (
     <div className="grid h-screen grid-rows-[45vh_1fr] md:grid-cols-[420px_1fr] md:grid-rows-1">
-      <aside className="order-2 flex min-h-0 flex-col overflow-hidden border-t border-neutral-200 md:order-1 md:border-r md:border-t-0">
-        <header className="flex items-baseline justify-between px-4 pt-4">
-          <h1 className="flex items-center gap-1.5 text-lg font-semibold tracking-tight"><Blocks size={18} className="text-rose-600" /> 키즈카페 지도</h1>
-          <span className="text-xs text-neutral-400">MVP · 공공데이터 시드</span>
+      <aside className="order-2 flex min-h-0 flex-col overflow-hidden rounded-t-card bg-white shadow-sheet md:order-1 md:rounded-none md:border-r md:border-neutral-200 md:shadow-none">
+        {/* 모바일: 지도 위에 얹힌 바텀시트처럼 보이도록 손잡이 표시 */}
+        <div className="flex shrink-0 justify-center pb-1 pt-2 md:hidden">
+          <span className="h-1 w-9 rounded-full bg-neutral-200" aria-hidden="true" />
+        </div>
+        <header className="flex flex-col gap-1 px-4 pb-3 pt-2 md:pt-4">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
+              <Blocks size={17} />
+            </span>
+            <h1 className="text-lg font-bold tracking-tight text-neutral-900">키즈카페 지도</h1>
+          </div>
+          <p className="pl-10 text-xs leading-snug text-neutral-500">후기 대신, 출처와 확인일이 붙은 정보로 고르는 키즈카페</p>
         </header>
         <FiltersBar filters={filters} onChange={setFilters} total={venues.length} visible={visible.length} />
-        {error && <p className="m-4 rounded border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+        {error && <p className="m-4 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-700">{error}</p>}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {selected ? (
             <VenueDetail venue={selected} onBack={() => setSelectedId(null)} />
+          ) : venues.length === 0 && !error ? (
+            <ListSkeleton />
           ) : (
             <VenueList venues={visible} hoveredId={hoveredId} selectedId={selectedId} onHover={setHoveredId} onSelect={onSelect} />
           )}

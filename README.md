@@ -117,7 +117,7 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 
 ## 지도 배경: 카카오맵 (기본) / VWorld (대체)
 
-`apps/web/.env.local`에 `NEXT_PUBLIC_KAKAO_JS_KEY`가 있으면 `components/KakaoMapView.tsx`(카카오맵 JS SDK: MarkerClusterer, 카테고리 색·초록 링 SVG 마커, hover 링·클릭 팝업 CustomOverlay, idle → 리스트 범위 동기화, 정수 레벨 줌 1~13)를 쓰고, 없으면 `MapView.tsx`(MapLibre + VWorld 래스터)로 대체한다. 카카오 데이터는 저장하지 않고 배경 지도로만 쓴다.
+`apps/web/.env.local`에 `NEXT_PUBLIC_KAKAO_JS_KEY`가 있으면 `components/KakaoMapView.tsx`(카카오맵 JS SDK: MarkerClusterer, 카테고리 색·초록 링 SVG 마커, hover 링·클릭 팝업 CustomOverlay, idle → 리스트 범위 동기화, 정수 레벨 줌 1~13)를 쓰고, 없으면 `MapView.tsx`(MapLibre + VWorld 래스터)로 대체한다. 카카오 데이터는 저장하지 않고 배경 지도로만 쓴다. 사파리 실측 로딩: 지도 0.7초, 마커 2,911개 배치 1.06초(2026-09-20).
 
 카카오 개발자 콘솔(developers.kakao.com, 앱 "키즈카페" ID 1583385)에서 필요한 설정:
 

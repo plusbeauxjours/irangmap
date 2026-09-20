@@ -39,8 +39,8 @@ export function SockIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 export const CATEGORY_STYLE: Record<Category, { Icon: typeof Blocks; bg: string; fg: string; dot: string }> = {
-  kids_cafe: { Icon: Blocks, bg: "bg-rose-50", fg: "text-rose-600", dot: "#e11d48" },
-  trampoline_park: { Icon: Activity, bg: "bg-blue-50", fg: "text-blue-600", dot: "#2563eb" },
+  kids_cafe: { Icon: Blocks, bg: "bg-brand-50", fg: "text-brand-600", dot: "var(--color-brand-600)" },
+  trampoline_park: { Icon: Activity, bg: "bg-trampoline-50", fg: "text-trampoline-600", dot: "var(--color-trampoline-600)" },
 };
 
 export function CategoryIcon({ category, size = 18, className = "" }: { category: Category; size?: number; className?: string }) {

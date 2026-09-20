@@ -1,5 +1,55 @@
 @import "tailwindcss";
 
+/* 디자인 토큰 (2026-09 UI 개편) — 브랜드 로즈·트램폴린 블루·확인됨 그린 + 카드 반경/그림자 */
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", "Apple SD Gothic Neo", system-ui, Roboto, sans-serif;
+
+  --color-brand-50: #fff1f2;
+  --color-brand-100: #ffe4e6;
+  --color-brand-200: #fecdd3;
+  --color-brand-300: #fda4af;
+  --color-brand-400: #fb7185;
+  --color-brand-500: #f43f5e;
+  --color-brand-600: #e11d48;
+  --color-brand-700: #be123c;
+  --color-brand-900: #881337;
+
+  --color-trampoline-50: #eff6ff;
+  --color-trampoline-100: #dbeafe;
+  --color-trampoline-200: #bfdbfe;
+  --color-trampoline-500: #3b82f6;
+  --color-trampoline-600: #2563eb;
+  --color-trampoline-700: #1d4ed8;
+  --color-trampoline-900: #1e3a8a;
+
+  --color-verified-50: #ecfdf5;
+  --color-verified-100: #d1fae5;
+  --color-verified-300: #6ee7b7;
+  --color-verified-500: #10b981;
+  --color-verified-600: #059669;
+  --color-verified-700: #047857;
+  --color-verified-800: #065f46;
+  --color-verified-900: #064e3b;
+
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 8px 20px -8px rgb(15 23 42 / 0.10);
+  --shadow-sheet: 0 -8px 24px -8px rgb(15 23 42 / 0.16);
+}
+
+body {
+  font-family: var(--font-sans);
+  line-height: 1.55; /* 한글은 라틴보다 줄간격을 조금 더 준다 */
+}
+
+/* 좁은 폭 필터 칩 가로 스크롤: 스크롤은 되지만 막대는 숨긴다 */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* 지도 클러스터 숫자 라벨 (MapView, HTML Marker) — 원격 글리프 대신 DOM으로 그린다 */
 .kc-cluster-label {
   pointer-events: none;

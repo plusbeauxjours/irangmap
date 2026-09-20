@@ -124,13 +124,12 @@ export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSe
     };
   }, []);
 
-  // 업소 → 마커 (필터가 바뀔 때마다 다시)
+  // 업소 → 마커. 마커 객체는 업소 id별로 한 번만 만들고(2,900개 생성이 가장 비싼 일),
+  // 필터가 바뀌면 클러스터러에 넣는 집합만 바꾼다.
   useEffect(() => {
     const map = mapRef.current;
     const clusterer = clustererRef.current;
     if (!ready || !map || !clusterer) return;
-    clusterer.clear();
-    markersRef.current.clear();
     const image = (cat: Venue["category"], verified: boolean) => {
       const k = `${cat}:${verified ? 1 : 0}`;
       let img = imagesRef.current.get(k);
@@ -140,23 +139,31 @@ export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSe
       }
       return img;
     };
+    const showPopup = (v: Venue, m: kakao.maps.Marker) => {
+      const verified = v.attrs ? `<br/><span style="color:#059669">✓ 이용 정보 확인됨</span>` : "";
+      const html = `<div style="font:13px/1.4 system-ui;background:#fff;border-radius:8px;padding:8px 10px;box-shadow:0 2px 8px rgba(0,0,0,.2);max-width:240px"><strong>${escapeHtml(v.name)}</strong><br/>${CATEGORY_LABEL[v.category]}${verified}<br/><span style="color:#555">${escapeHtml(v.addr)}</span></div>`;
+      if (!popupRef.current) popupRef.current = new kakao.maps.CustomOverlay({ content: html, position: m.getPosition(), yAnchor: 1.4, zIndex: 10 });
+      else {
+        popupRef.current.setContent(html);
+        popupRef.current.setPosition(m.getPosition());
+      }
+      popupRef.current.setMap(map);
+    };
     const markers: kakao.maps.Marker[] = [];
     for (const v of venues) {
-      const m = new kakao.maps.Marker({ position: new kakao.maps.LatLng(v.lat, v.lon), image: image(v.category, Boolean(v.attrs)), title: v.name, clickable: true });
-      kakao.maps.event.addListener(m, "click", () => {
-        onSelectRef.current(v.id);
-        const verified = v.attrs ? `<br/><span style="color:#059669">✓ 이용 정보 확인됨</span>` : "";
-        const html = `<div style="font:13px/1.4 system-ui;background:#fff;border-radius:8px;padding:8px 10px;box-shadow:0 2px 8px rgba(0,0,0,.2);max-width:240px"><strong>${escapeHtml(v.name)}</strong><br/>${CATEGORY_LABEL[v.category]}${verified}<br/><span style="color:#555">${escapeHtml(v.addr)}</span></div>`;
-        if (!popupRef.current) popupRef.current = new kakao.maps.CustomOverlay({ content: html, position: m.getPosition(), yAnchor: 1.4, zIndex: 10 });
-        else {
-          popupRef.current.setContent(html);
-          popupRef.current.setPosition(m.getPosition());
-        }
-        popupRef.current.setMap(map);
-      });
+      let m = markersRef.current.get(v.id);
+      if (!m) {
+        m = new kakao.maps.Marker({ position: new kakao.maps.LatLng(v.lat, v.lon), image: image(v.category, Boolean(v.attrs)), title: v.name, clickable: true });
+        const marker = m;
+        kakao.maps.event.addListener(marker, "click", () => {
+          onSelectRef.current(v.id);
+          showPopup(v, marker);
+        });
+        markersRef.current.set(v.id, m);
+      }
       markers.push(m);
-      markersRef.current.set(v.id, m);
     }
+    clusterer.clear();
     clusterer.addMarkers(markers);
     performance.mark("kc:venues-source-loaded");
     setPlaced(true);

@@ -14,8 +14,8 @@ interface Props {
 
 function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   return (
-    <section>
-      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+    <section className="border-t border-neutral-100 pt-5">
+      <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
         {icon}
         {title}
       </h3>
@@ -29,11 +29,16 @@ function Collapsible({ title, text }: { title: string; text: string }) {
   const [open, setOpen] = useState(false);
   const long = text.length > 140 || text.split("\n").length > 3;
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
+    <div className="rounded-card border border-neutral-200 bg-white px-3.5 py-2.5">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-neutral-800">{title}</span>
         {long && (
-          <button type="button" onClick={() => setOpen(!open)} className="flex items-center gap-0.5 text-xs text-neutral-500 hover:text-neutral-900" aria-expanded={open}>
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            className="flex items-center gap-0.5 rounded text-xs text-neutral-500 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+            aria-expanded={open}
+          >
             {open ? "접기" : "더보기"}
             {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
@@ -44,7 +49,8 @@ function Collapsible({ title, text }: { title: string; text: string }) {
   );
 }
 
-const btn = "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition";
+const btn = "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
+const btnFocusNeutral = "focus-visible:ring-neutral-400";
 
 export function VenueDetail({ venue: v, onBack }: Props) {
   const a = v.attrs;
@@ -54,14 +60,18 @@ export function VenueDetail({ venue: v, onBack }: Props) {
 
   return (
     <div className="flex flex-col gap-5 p-4">
-      <button type="button" onClick={onBack} className="inline-flex items-center gap-1 self-start text-sm text-neutral-500 hover:text-neutral-900">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-1 self-start rounded text-sm text-neutral-500 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+      >
         <ArrowLeft size={16} /> 목록으로
       </button>
 
       <header className="flex gap-3">
         <CategoryIcon category={v.category} size={22} className="mt-0.5" />
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-semibold leading-tight">{v.name}</h2>
+          <h2 className="text-lg font-bold leading-tight text-neutral-900">{v.name}</h2>
           <p className="mt-1 flex items-start gap-1 text-sm text-neutral-600">
             <MapPin size={14} className="mt-0.5 shrink-0 text-neutral-400" />
             <span>{v.addr || "주소 없음"}</span>
@@ -74,7 +84,7 @@ export function VenueDetail({ venue: v, onBack }: Props) {
               </span>
             )}
             {v.public && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+              <span className="inline-flex items-center gap-1 rounded-full bg-verified-50 px-2 py-0.5 text-verified-700">
                 <Building2 size={12} /> 공공 운영
               </span>
             )}
@@ -88,7 +98,7 @@ export function VenueDetail({ venue: v, onBack }: Props) {
       </header>
 
       {a ? (
-        <p className={`flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs ${a.scope === "brand" ? "bg-amber-50 text-amber-900" : "bg-emerald-50 text-emerald-800"}`}>
+        <p className={`flex items-start gap-1.5 rounded-card px-3 py-2.5 text-xs ${a.scope === "brand" ? "bg-amber-50 text-amber-900" : "bg-verified-50 text-verified-800"}`}>
           <CircleCheck size={14} className="mt-0.5 shrink-0" />
           <span>
             <strong>{a.source_label}</strong>에서 확인 · {a.observed_at}
@@ -96,7 +106,7 @@ export function VenueDetail({ venue: v, onBack }: Props) {
           </span>
         </p>
       ) : (
-        <p className="flex items-start gap-1.5 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+        <p className="flex items-start gap-1.5 rounded-card bg-neutral-50 px-3 py-2.5 text-xs text-neutral-600">
           <CircleHelp size={14} className="mt-0.5 shrink-0 text-neutral-400" />
           <span>
             아직 확인된 이용 정보가 없어요. <span className="text-neutral-500">공식 채널·사업자 확인·이용자 제보로 채워지며, 채워질 때 출처와 확인일이 함께 표시됩니다.</span>
@@ -108,7 +118,7 @@ export function VenueDetail({ venue: v, onBack }: Props) {
 
       {a && (a.operating_days || a.closed_days || slots.length > 0 || a.hours_text) && (
         <Section icon={<Clock size={14} />} title="운영">
-          <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
+          <div className="rounded-card border border-neutral-200 bg-white px-3.5 py-2.5 text-sm">
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
               {a.operating_days && (
                 <>
@@ -141,10 +151,10 @@ export function VenueDetail({ venue: v, onBack }: Props) {
         </Section>
       )}
 
-      <Section icon={<Phone size={14} />} title="연락·바로가기">
+      <Section icon={<Phone size={14} />} title="연락처">
         <div className="flex flex-wrap gap-2">
           {v.phone ? (
-            <a href={`tel:${v.phone.replace(/[^\d+]/g, "")}`} className={`${btn} border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-700`}>
+            <a href={`tel:${v.phone.replace(/[^\d+]/g, "")}`} className={`${btn} border-brand-600 bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-300`}>
               <Phone size={14} /> {v.phone}
             </a>
           ) : (
@@ -153,24 +163,38 @@ export function VenueDetail({ venue: v, onBack }: Props) {
             </span>
           )}
           {a?.reservation_url && (
-            <a href={a.reservation_url} target="_blank" rel="noopener noreferrer" className={`${btn} border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}>
+            <a
+              href={a.reservation_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${btn} border-verified-600 bg-verified-600 text-white hover:bg-verified-700 focus-visible:ring-verified-300`}
+            >
               <CalendarCheck size={14} /> 예약
             </a>
           )}
           {a?.evidence_url && (
-            <a href={a.evidence_url} target="_blank" rel="noopener noreferrer" className={`${btn} border-neutral-300 text-neutral-700 hover:border-neutral-900`}>
+            <a href={a.evidence_url} target="_blank" rel="noopener noreferrer" className={`${btn} ${btnFocusNeutral} border-neutral-300 text-neutral-700 hover:border-neutral-900`}>
               <ExternalLink size={14} /> 원문
             </a>
           )}
           {a?.photo_url && (
-            <a href={a.photo_url} target="_blank" rel="noopener noreferrer" className={`${btn} border-neutral-300 text-neutral-700 hover:border-neutral-900`}>
+            <a href={a.photo_url} target="_blank" rel="noopener noreferrer" className={`${btn} ${btnFocusNeutral} border-neutral-300 text-neutral-700 hover:border-neutral-900`}>
               <Camera size={14} /> 사진
             </a>
           )}
         </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
+      </Section>
+
+      <Section icon={<ExternalLink size={14} />} title="외부에서 더 보기">
+        <div className="flex flex-wrap gap-1.5">
           {linkouts(v).map((l) => (
-            <a key={l.key} href={l.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700 hover:bg-neutral-200">
+            <a
+              key={l.key}
+              href={l.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700 transition hover:bg-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
+            >
               {l.label} <ExternalLink size={11} />
             </a>
           ))}
