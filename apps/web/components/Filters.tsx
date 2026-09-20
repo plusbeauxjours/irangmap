@@ -15,9 +15,10 @@ const CATEGORIES: Category[] = ["kids_cafe", "trampoline_park"];
 
 const FOCUS_RING = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 
+// 활성 = 연한 틴트 + 진한 글자 (채운 원색은 화면에 색이 너무 많아진다)
 const CATEGORY_ACTIVE_CLASS: Record<Category, string> = {
-  kids_cafe: "border-brand-600 bg-brand-600 text-white shadow-sm",
-  trampoline_park: "border-trampoline-600 bg-trampoline-600 text-white shadow-sm",
+  kids_cafe: "border-brand-200 bg-brand-50 text-brand-700",
+  trampoline_park: "border-trampoline-200 bg-trampoline-50 text-trampoline-700",
 };
 
 export function FiltersBar({ filters, onChange, total, visible }: Props) {
@@ -27,7 +28,7 @@ export function FiltersBar({ filters, onChange, total, visible }: Props) {
     else next.add(c);
     onChange({ ...filters, categories: next });
   };
-  // 카테고리 칩: 가장 눈에 띄는 1차 필터 (브랜드 색으로 채움)
+  // 카테고리 칩: 1차 필터
   const categoryChip = (c: Category, active: boolean) =>
     `inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition ${FOCUS_RING} focus-visible:ring-neutral-400 ${
       active ? CATEGORY_ACTIVE_CLASS[c] : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300 hover:bg-neutral-50"
@@ -39,9 +40,9 @@ export function FiltersBar({ filters, onChange, total, visible }: Props) {
     }`;
 
   return (
-    <div className="flex flex-col gap-3 border-b border-neutral-200 p-4">
+    <div className="flex flex-col gap-2 border-b border-neutral-200 px-4 pb-3 pt-2 md:gap-3 md:p-4">
       <p className="flex items-center gap-1.5 text-xs text-neutral-500" title="공공데이터 3종 + 서울형 키즈카페, 2026-09-20 기준">
-        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-500" aria-hidden="true" />
+        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-400" aria-hidden="true" />
         지도 범위 안 <strong className="font-semibold text-neutral-900">{visible.toLocaleString()}</strong>곳
         <span className="text-neutral-300">·</span>
         전국 {total.toLocaleString()}곳
@@ -53,7 +54,7 @@ export function FiltersBar({ filters, onChange, total, visible }: Props) {
           value={filters.query}
           onChange={(e) => onChange({ ...filters, query: e.target.value })}
           placeholder="이름·주소 검색 (예: 판교, 챔피언)"
-          className={`w-full rounded-xl border border-neutral-200 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-brand-500 ${FOCUS_RING} focus-visible:ring-brand-200`}
+          className={`w-full rounded-xl border border-neutral-200 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-neutral-900 ${FOCUS_RING} focus-visible:ring-neutral-300`}
           aria-label="검색"
         />
       </label>

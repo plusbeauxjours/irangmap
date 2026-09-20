@@ -154,7 +154,7 @@ export function VenueDetail({ venue: v, onBack }: Props) {
       <Section icon={<Phone size={14} />} title="연락처">
         <div className="flex flex-wrap gap-2">
           {v.phone ? (
-            <a href={`tel:${v.phone.replace(/[^\d+]/g, "")}`} className={`${btn} border-brand-600 bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-300`}>
+            <a href={`tel:${v.phone.replace(/[^\d+]/g, "")}`} className={`${btn} border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-700 focus-visible:ring-neutral-400`}>
               <Phone size={14} /> {v.phone}
             </a>
           ) : (
@@ -167,7 +167,7 @@ export function VenueDetail({ venue: v, onBack }: Props) {
               href={a.reservation_url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${btn} border-verified-600 bg-verified-600 text-white hover:bg-verified-700 focus-visible:ring-verified-300`}
+              className={`${btn} border-verified-600 bg-white text-verified-700 hover:bg-verified-50 focus-visible:ring-verified-300`}
             >
               <CalendarCheck size={14} /> 예약
             </a>

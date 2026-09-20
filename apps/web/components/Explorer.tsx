@@ -103,14 +103,14 @@ export function Explorer() {
         <div className="flex shrink-0 justify-center pb-1 pt-2 md:hidden">
           <span className="h-1 w-9 rounded-full bg-neutral-200" aria-hidden="true" />
         </div>
-        <header className="flex flex-col gap-1 px-4 pb-3 pt-2 md:pt-4">
+        <header className="flex flex-col gap-1 px-4 pb-1 pt-1 md:pb-3 md:pt-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
               <Blocks size={17} />
             </span>
             <h1 className="text-lg font-bold tracking-tight text-neutral-900">키즈카페 지도</h1>
           </div>
-          <p className="pl-10 text-xs leading-snug text-neutral-500">후기 대신, 출처와 확인일이 붙은 정보로 고르는 키즈카페</p>
+          <p className="hidden pl-10 text-xs leading-snug text-neutral-500 md:block">후기 대신, 출처와 확인일이 붙은 정보로 고르는 키즈카페</p>
         </header>
         <FiltersBar filters={filters} onChange={setFilters} total={venues.length} visible={visible.length} />
         {error && <p className="m-4 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-700">{error}</p>}
