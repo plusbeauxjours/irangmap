@@ -179,15 +179,20 @@ export function regionHint(addr: string | undefined): string {
   return [...gu, dong].filter(Boolean).join(" ");
 }
 
+/** 검색어용 상호: 법인 표기((주)·㈜·주식회사)는 어느 서비스 검색에도 도움이 안 된다. */
+function searchName(name: string): string {
+  return name.replace(/\(주\)|주식회사|㈜/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function reviewQuery(v: Venue): string {
-  const name = v.name.replace(/\(주\)|주식회사|㈜/g, " ").replace(/\s+/g, " ").trim();
-  return `${name} ${regionHint(v.addr)} 후기`.replace(/\s+/g, " ").trim();
+  return `${searchName(v.name)} ${regionHint(v.addr)} 후기`.replace(/\s+/g, " ").trim();
 }
 
 /** 외부 서비스 검색 딥링크 — 데이터 저장 없이 링크만 (카카오 place_id·네이버는 링크아웃 원칙). */
 export function linkouts(v: Venue) {
-  const q = encodeURIComponent(`${v.name} ${v.sido}`.trim());
-  const qAddr = encodeURIComponent(`${v.name} ${v.addr}`.trim());
+  const name = searchName(v.name);
+  const q = encodeURIComponent(`${name} ${v.sido}`.trim());
+  const qAddr = encodeURIComponent(`${name} ${v.addr}`.trim());
   const qReview = encodeURIComponent(reviewQuery(v));
   return [
     { key: "naver_blog", label: "네이버 블로그 후기", href: `https://search.naver.com/search.naver?where=blog&query=${qReview}` },
@@ -195,7 +200,7 @@ export function linkouts(v: Venue) {
     { key: "kakao", label: "카카오맵", href: `https://map.kakao.com/?q=${qAddr}` },
     { key: "naver", label: "네이버 지도", href: `https://map.naver.com/p/search/${q}` },
     { key: "google", label: "구글 검색", href: `https://www.google.com/search?q=${qAddr}` },
-    { key: "instagram", label: "인스타그램", href: `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(v.name.replace(/\s+/g, ""))}` },
+    { key: "instagram", label: "인스타그램", href: `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(name.replace(/\s+/g, ""))}` },
   ];
 }
 

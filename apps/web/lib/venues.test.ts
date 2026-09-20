@@ -44,6 +44,8 @@ test("regionHint keeps gu/si tokens and the dong in parentheses, and strips (주
   expect(regionHint(undefined)).toBe("");
   const v = { ...venues[1], name: "(주)바운스 세종센터", addr: "세종특별자치시 국세청로 32 (나성동)" };
   expect(decodeURIComponent(linkouts(v)[0].href)).toContain("바운스 세종센터 나성동 후기");
+  expect(decodeURIComponent(linkouts(v)[5].href)).toContain("q=바운스세종센터");
+  expect(decodeURIComponent(linkouts(v)[2].href)).not.toContain("(주)");
 });
 
 test("attribute schema covers what parents check first", () => {
