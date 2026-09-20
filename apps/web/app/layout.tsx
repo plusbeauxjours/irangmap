@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "키즈카페 지도",
-  description: "전국 키즈카페를 연령·보호자 요금·놀이공간으로 찾는 지도",
+  title: "아이랑맵 — 전국 키즈카페 지도",
+  description: "아이랑 갈 키즈카페를 이용 연령·요금·양말 규정·예약까지 출처와 확인일이 붙은 정보로 고르는 전국 지도",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

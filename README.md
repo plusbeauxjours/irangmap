@@ -1,4 +1,4 @@
-# kidscafe — 전국 키즈카페 지도
+# 아이랑맵 (irangmap) — 전국 키즈카페 지도
 
 전국 키즈카페를 공공데이터로 시드하고, 연령·보호자 요금·놀이공간 같은 **출처가 붙은 속성**을 얹어 에어비앤비식 "리스트 ↔ 지도"로 보여주는 서비스의 저장소다. 1~3인 팀 전제. 계획 전문은 `~/.claude/plans/harmonic-dazzling-allen.md`, 데이터 스파이크 결과는 [docs/spike-data.md](docs/spike-data.md).
 

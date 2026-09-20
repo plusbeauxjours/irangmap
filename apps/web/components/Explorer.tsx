@@ -108,9 +108,9 @@ export function Explorer() {
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
               <Blocks size={17} />
             </span>
-            <h1 className="text-lg font-bold tracking-tight text-neutral-900">키즈카페 지도</h1>
+            <h1 className="text-lg font-bold tracking-tight text-neutral-900">아이랑맵</h1>
           </div>
-          <p className="hidden pl-10 text-xs leading-snug text-neutral-500 md:block">후기 대신, 출처와 확인일이 붙은 정보로 고르는 키즈카페</p>
+          <p className="hidden pl-10 text-xs leading-snug text-neutral-500 md:block">전국 키즈카페 지도 — 출처와 확인일이 붙은 정보로 고르기</p>
         </header>
         <FiltersBar filters={filters} onChange={setFilters} total={venues.length} visible={visible.length} />
         {error && <p className="m-4 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-700">{error}</p>}
