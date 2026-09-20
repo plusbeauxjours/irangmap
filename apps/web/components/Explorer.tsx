@@ -16,6 +16,12 @@ const MapView = dynamic(() => import("./MapView").then((m) => m.MapView), {
   ssr: false,
   loading: () => <div className="flex h-full items-center justify-center text-sm text-neutral-500">지도를 불러오는 중…</div>,
 });
+const KakaoMapView = dynamic(() => import("./KakaoMapView").then((m) => m.KakaoMapView), {
+  ssr: false,
+  loading: () => <div className="h-full w-full animate-pulse bg-neutral-100" />,
+});
+// 카카오 JS 키가 있으면 카카오맵(한국 사용자에게 익숙한 지도), 없으면 VWorld 래스터로 대체
+const USE_KAKAO = Boolean(process.env.NEXT_PUBLIC_KAKAO_JS_KEY);
 
 export function Explorer() {
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -87,7 +93,11 @@ export function Explorer() {
         </div>
       </aside>
       <main className="order-1 min-h-0 md:order-2">
-        <MapView venues={filtered} hoveredId={hoveredId} selected={selected} onBoundsChange={onBoundsChange} onSelect={onSelect} />
+        {USE_KAKAO ? (
+          <KakaoMapView venues={filtered} hoveredId={hoveredId} selected={selected} onBoundsChange={onBoundsChange} onSelect={onSelect} />
+        ) : (
+          <MapView venues={filtered} hoveredId={hoveredId} selected={selected} onBoundsChange={onBoundsChange} onSelect={onSelect} />
+        )}
       </main>
     </div>
   );

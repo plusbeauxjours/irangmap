@@ -157,3 +157,9 @@
 - 비용 감: sonnet, 페이지당 $0.1~0.2 상당(출력 토큰이 큼 — 매장 배열). 바운스 센터 페이지 confidence 0.85~0.9.
 - **결과(2026-09-20 12:30)**: 46페이지 추출(배치 43 + 뽀로로파크 3, sonnet 상당 비용 $1.76). 부착 = **9브랜드 / 매장별 31 + 브랜드 공통 14 = 45곳**(바운스 37, 뽀로로파크 8), 전화만 보충 30곳(쁘띠몽드·점핑몬스터·큐리키즈·타요키즈 목록). `no_data` 207곳 = 목록만 있고 요금·연령이 없는 브랜드(챔피언·플레이타임·꼬마대통령·헬로방방 등) → 사업자 클레임 대상. 타요키즈 `info_url`은 양말 공지가 아니라 추석휴무 공지(seq=197)였고 본문도 텍스트에 없음 → 채널 목록 수정 필요. 지도 전체: **2,911곳, 이용 정보 확인 181곳**(서울형 136 + 프랜차이즈 45), 전화 751곳.
 - 상호에 '(폐)'가 붙은 채 영업으로 남은 3곳(부산 해운대구: 릴리펏 마린시티점·주바운스클럽 해운대점·모모로 키즈카페) → `reports.CLOSED_NAME_RE`로 union에서 제외(2,914 → 2,911).
+
+## 2026-09-20 — 지도 배경 교체 (VWorld → 카카오맵)
+
+- 사용자 피드백 "지도가 옛날 것 같다" → VWorld Base 래스터의 관공서 지도 느낌. VWorld `gray` 레이어는 이 키로 XML 오류, `midnight`(다크)·`Hybrid`는 응답. OpenFreeMap(무료 벡터)도 응답하지만 한국 POI 밀도는 미확인. 사용자가 카카오맵 SDK를 선택 → 전용 계정·앱(ID 1583385) 생성, JS 키 수령(`apps/web/.env.local`, 커밋 금지).
+- SDK 로드 진단: 스크립트 `onerror` + 네트워크 `net::ERR_BLOCKED_BY_ORB`. curl에 `Referer: http://localhost:3000/`을 붙이면 401 `{"errorType":"AccessDeniedError","message":"domain mismatched! caller=http://localhost:3000 ..."}` → 콘솔에 Web 도메인 미등록. Referer 없이는 200 text/javascript(부트스트랩 4KB)라 curl만으로는 못 잡는다.
+- 구현: `KakaoMapView.tsx` — 카카오 공식 타입이 없어 `types/kakao.d.ts`에 쓰는 API만 선언. 마커는 SVG data URI `MarkerImage` 4종(카테고리×확인), 클러스터는 `MarkerClusterer(minLevel 5, calculator [10,50,200])`, 팝업·hover 링은 `CustomOverlay`. 키가 없으면 Explorer가 VWorld 지도로 자동 대체.

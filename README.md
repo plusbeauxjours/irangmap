@@ -114,3 +114,13 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 - 긴 안내문(연령 상세·유의사항·할인)은 3줄 접기 + "더보기". 회차는 4개만 보이고 "+N회차".
 - 후기는 저장하지 않고 **네이버 블로그·카페 검색 딥링크**로 보낸다(`linkouts`): 쿼리 = 업소명(㈜ 제거) + 주소의 구·시·군/동 + "후기" — 지점 많은 브랜드의 다른 지점 글을 걸러주는 지역 힌트(`regionHint`). 2단계(네이버 검색 API로 최근 글 표시)는 키 발급 후.
 - 값의 압축 규칙은 `lib/facts.ts`(예: 주차 문구에 무료만 있으면 "무료", 유료 문구 섞이면 "일부 무료").
+
+## 지도 배경: 카카오맵 (기본) / VWorld (대체)
+
+`apps/web/.env.local`에 `NEXT_PUBLIC_KAKAO_JS_KEY`가 있으면 `components/KakaoMapView.tsx`(카카오맵 JS SDK: MarkerClusterer, 카테고리 색·초록 링 SVG 마커, hover 링·클릭 팝업 CustomOverlay, idle → 리스트 범위 동기화, 정수 레벨 줌 1~13)를 쓰고, 없으면 `MapView.tsx`(MapLibre + VWorld 래스터)로 대체한다. 카카오 데이터는 저장하지 않고 배경 지도로만 쓴다.
+
+카카오 개발자 콘솔(developers.kakao.com, 앱 "키즈카페" ID 1583385)에서 필요한 설정:
+
+1. 앱 설정 → 플랫폼 → Web → 사이트 도메인에 `http://localhost:3000`(운영 도메인은 생기면 추가). 빠지면 SDK 요청이 401 `domain mismatched`로 거절되고 브라우저에는 `net::ERR_BLOCKED_BY_ORB`로 보인다.
+2. 제품 설정 → 카카오맵 → ON.
+3. 앱 키 → **JavaScript 키**만 사용(Admin 키는 어디에도 넣지 않는다). 계정의 첫 앱만 무료(2026-07-21 정책).
