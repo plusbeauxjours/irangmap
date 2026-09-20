@@ -55,8 +55,9 @@ pnpm pipeline ingest themepark-other --dry-run --save data/raw/themepark_other.j
 pnpm pipeline ingest playground --dry-run --save data/raw/playground.jsonl.gz          # 85,338건, 86콜
 pnpm pipeline ingest rest-cafes --dry-run --save data/raw/rest_cafes.jsonl.gz          # 647k건, 6,474콜(--start-page로 재개)
 pnpm pipeline ingest fire-mu --dry-run                                                 # 소방청 CSV(플래그용)
+pnpm pipeline ingest umppa --dry-run --save data/raw/umppa.json                        # 서울형 키즈카페 이용안내(ENABLE_UMPPA=true, 5초/요청, ~15분)
 pnpm pipeline report seeds                                                             # 3소스 union·매칭 tier (DB 불필요)
-pnpm pipeline export geojson --out data/derived/venues.geojson                         # 지도 MVP용 브릿지
+pnpm pipeline export geojson --out data/derived/venues.geojson                         # 지도 MVP용 브릿지(umppa.json 있으면 지오코딩·매칭해 attrs 부착)
 ```
 
 `.env`에 필요한 키: `DATA_GO_KR_KEY` + `DATAGOKR_THEMEPARK_URL`/`DATAGOKR_RESTCAFE_URL`/`DATAGOKR_PLAYGROUND_URL`(엔드포인트, `.env.example` 참고) · `VWORLD_KEY`(지오코딩) · `GG_DATA_KEY`(경기데이터드림, 선택). 오너가 더 준비할 것은 [docs/owner-todo.md](docs/owner-todo.md).
@@ -92,3 +93,14 @@ pnpm lint && pnpm test && pnpm build && docker compose config
 ```bash
 uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 ```
+
+## 속성 레이어 (이용 정보) — 채우는 순서
+
+상세 패널의 이용 연령·보호자 요금·아동 요금·양말·놀이 공간·편의·유의사항·사진은 값마다 **출처 + 확인일**을 달고 채운다.
+
+1. **서울형 키즈카페** — 서울시 우리동네키움포털(`umppa.seoul.go.kr/icare`, robots Allow) 공개 이용안내를 `ingest umppa`로 수집. `export geojson`이 주소를 VWorld로 지오코딩(`data/derived/umppa_geocode_cache.json`)해 300 m 안 이름 유사도로 union 업소에 붙이고, 없으면 공공 업소로 추가한다. 사진은 저장·임베드하지 않고 서울시 원본 링크만 둔다.
+2. 프랜차이즈 공식 사이트·인스타 → LLM 추출(`ANTHROPIC_API_KEY` 필요, 요금표 이미지 20장 스파이크 후).
+3. 롱테일 → 사업자 클레임·이용자 제보.
+4. 사진 → 사업자·이용자 제공분만.
+
+지도 줌은 휠 1노치 = 정수 1단계(6~17)로 스냅한다(`MapView.tsx`, 중간 단계 렌더를 없애 체감 속도 확보).

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     enable_naver_aux: bool = False
     naver_aux_level: int = 1
     enable_umppa_snapshot: bool = False
+    enable_umppa: bool = False  # 서울형 키즈카페 정보 크롤(robots Allow)
 
 
 @lru_cache

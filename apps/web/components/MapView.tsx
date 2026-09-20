@@ -63,8 +63,33 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
       },
       center: [127.6, 36.4],
       zoom: 6.3,
-      minZoom: 5,
+      minZoom: 6,
+      maxZoom: 17,
+      scrollZoom: false, // 연속 줌 대신 아래에서 1레벨 단위 스냅 줌
+      fadeDuration: 0,
+      renderWorldCopies: false,
     });
+    // 휠·트랙패드 줌을 정수 레벨 단위로 스냅한다. 연속 줌은 중간 단계마다 타일·클러스터를 다시 계산해 느리다.
+    let wheelBusy = false;
+    let wheelAcc = 0;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      if (wheelBusy) return;
+      wheelAcc += e.deltaY;
+      if (Math.abs(wheelAcc) < 30) return;
+      const dir = wheelAcc > 0 ? -1 : 1;
+      wheelAcc = 0;
+      wheelBusy = true;
+      const rect = map.getCanvas().getBoundingClientRect();
+      const around = map.unproject([e.clientX - rect.left, e.clientY - rect.top]);
+      const target = Math.min(17, Math.max(6, Math.round(map.getZoom()) + dir));
+      map.easeTo({ zoom: target, around, duration: 220 });
+      map.once("moveend", () => {
+        wheelBusy = false;
+      });
+    };
+    const canvasContainer = map.getCanvasContainer();
+    canvasContainer.addEventListener("wheel", onWheel, { passive: false });
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     mapRef.current = map;
 
@@ -177,6 +202,7 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
     });
     map.on("moveend", emitBounds);
     return () => {
+      canvasContainer.removeEventListener("wheel", onWheel);
       for (const marker of labelsRef.current.values()) marker.remove();
       labelsRef.current.clear();
       map.remove();

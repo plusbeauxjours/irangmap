@@ -1,13 +1,37 @@
 "use client";
 
-import { ATTRIBUTE_SCHEMA, CATEGORY_LABEL, SOURCE_LABEL, linkouts, type Venue } from "@/lib/venues";
+import { ATTRIBUTE_SCHEMA, CATEGORY_LABEL, SOURCE_LABEL, linkouts, type Venue, type VenueAttrs } from "@/lib/venues";
 
 interface Props {
   venue: Venue;
   onBack: () => void;
 }
 
+/** 스키마 키 → 수집된 값(문자열). 없으면 null → "확인 필요". */
+function valueFor(key: (typeof ATTRIBUTE_SCHEMA)[number]["key"], a: VenueAttrs | null | undefined): string | null {
+  if (!a) return null;
+  switch (key) {
+    case "age_range":
+      return a.age_range ?? null;
+    case "guardian_fee":
+      return a.guardian_fee ?? null;
+    case "child_fee":
+      return a.child_fee ?? null;
+    case "socks":
+      return a.socks ?? null;
+    case "amenities": {
+      const parts = [a.parking, a.capacity ? `정원 개인 ${a.capacity["개인"] ?? "-"}명 · 단체 ${a.capacity["단체"] ?? "-"}명` : null].filter(Boolean);
+      return parts.length ? parts.join(" · ") : null;
+    }
+    case "notes":
+      return a.notes ?? null;
+    default:
+      return null;
+  }
+}
+
 export function VenueDetail({ venue: v, onBack }: Props) {
+  const a = v.attrs;
   return (
     <div className="flex flex-col gap-5 p-4">
       <button type="button" onClick={onBack} className="self-start text-sm text-neutral-500 hover:text-neutral-900">
@@ -28,6 +52,31 @@ export function VenueDetail({ venue: v, onBack }: Props) {
           {v.sources.length > 1 && <span className="rounded border border-neutral-200 px-1.5 py-0.5">공공데이터 {v.sources.length}종 교차 확인</span>}
         </p>
       </header>
+
+      {a && (
+        <section className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium text-emerald-900">
+              {a.source_label}에서 확인 <span className="ml-1 text-xs font-normal text-emerald-700">{a.observed_at}</span>
+            </p>
+            {a.reservation_url && (
+              <a href={a.reservation_url} target="_blank" rel="noopener noreferrer" className="rounded-full bg-emerald-600 px-3 py-1 text-sm font-medium text-white hover:bg-emerald-700">
+                예약 페이지 ↗
+              </a>
+            )}
+          </div>
+          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+            {a.operating_days && (<><dt className="text-neutral-500">운영일</dt><dd>{a.operating_days}</dd></>)}
+            {a.closed_days && (<><dt className="text-neutral-500">휴관일</dt><dd>{a.closed_days}</dd></>)}
+            {a.hours && a.hours.length > 0 && (<><dt className="text-neutral-500">회차</dt><dd className="flex flex-wrap gap-1">{a.hours.map((h) => <span key={h} className="rounded bg-white px-1.5 py-0.5 text-xs">{h}</span>)}</dd></>)}
+            {a.reservation && (<><dt className="text-neutral-500">예약</dt><dd>{a.reservation}</dd></>)}
+          </dl>
+          <p className="mt-2 flex flex-wrap gap-3 text-xs">
+            {a.evidence_url && <a href={a.evidence_url} target="_blank" rel="noopener noreferrer" className="text-emerald-800 underline">원문(이용안내) 보기</a>}
+            {a.photo_url && <a href={a.photo_url} target="_blank" rel="noopener noreferrer" className="text-emerald-800 underline">시설 사진 보기(서울시)</a>}
+          </p>
+        </section>
+      )}
 
       <section>
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">연락·바로가기</h3>
@@ -51,18 +100,37 @@ export function VenueDetail({ venue: v, onBack }: Props) {
       <section>
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">이용 정보</h3>
         <dl className="divide-y divide-neutral-100 rounded-lg border border-neutral-200">
-          {ATTRIBUTE_SCHEMA.map((a) => (
-            <div key={a.key} className="flex items-start justify-between gap-3 px-3 py-2">
-              <dt className="text-sm text-neutral-700">{a.label}</dt>
-              <dd className="text-right text-xs text-neutral-400">
-                <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-neutral-500">확인 필요</span>
-                <p className="mt-0.5 max-w-[200px]">{a.hint}</p>
-              </dd>
-            </div>
-          ))}
+          {ATTRIBUTE_SCHEMA.map((attr) => {
+            const val = valueFor(attr.key, a);
+            return (
+              <div key={attr.key} className="flex items-start justify-between gap-3 px-3 py-2">
+                <dt className="shrink-0 text-sm text-neutral-700">{attr.label}</dt>
+                {val ? (
+                  <dd className="whitespace-pre-line text-right text-sm text-neutral-900">
+                    {val}
+                    {attr.key === "age_range" && a?.age_rules && a.age_rules !== val && (
+                      <p className="mt-0.5 max-w-[240px] text-xs text-neutral-500">{a.age_rules}</p>
+                    )}
+                  </dd>
+                ) : (
+                  <dd className="text-right text-xs text-neutral-400">
+                    <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-neutral-500">확인 필요</span>
+                    <p className="mt-0.5 max-w-[200px]">{attr.hint}</p>
+                  </dd>
+                )}
+              </div>
+            );
+          })}
         </dl>
+        {a?.discounts && (
+          <p className="mt-2 whitespace-pre-line rounded border border-neutral-200 bg-neutral-50 p-2 text-xs text-neutral-600">
+            <span className="font-medium text-neutral-800">입장료 할인</span> {a.discounts}
+          </p>
+        )}
         <p className="mt-2 text-xs text-neutral-500">
-          이 항목들은 공식 홈페이지·인스타그램·사업자 확인·이용자 제보로 채워지며, 채워질 때 출처와 확인일이 함께 표시됩니다.
+          {a
+            ? `값은 ${a.source_label} 공개 정보(${a.observed_at} 확인)이며, 최신 내용은 원문·예약 페이지에서 다시 확인하세요.`
+            : "이 항목들은 공식 홈페이지·인스타그램·사업자 확인·이용자 제보로 채워지며, 채워질 때 출처와 확인일이 함께 표시됩니다."}
         </p>
       </section>
 

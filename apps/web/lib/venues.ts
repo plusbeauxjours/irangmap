@@ -13,6 +13,30 @@ export interface Venue {
   public?: boolean;
   phone?: string | null;
   homepage?: string | null;
+  attrs?: VenueAttrs | null;
+}
+
+/** 출처·확인일이 붙은 이용 정보. 지금은 서울형 키즈카페(우리동네키움포털)만 채워진다. */
+export interface VenueAttrs {
+  source: string;
+  source_label: string;
+  observed_at: string;
+  evidence_url?: string | null;
+  reservation_url?: string | null;
+  photo_url?: string | null;
+  age_range?: string | null;
+  age_rules?: string | null;
+  guardian_fee?: string | null;
+  child_fee?: string | null;
+  socks?: string | null;
+  capacity?: Record<string, number> | null;
+  operating_days?: string | null;
+  closed_days?: string | null;
+  hours?: string[] | null;
+  parking?: string | null;
+  notes?: string | null;
+  discounts?: string | null;
+  reservation?: string | null;
 }
 
 export interface Bounds {
@@ -39,6 +63,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   playground: "놀이시설 등록",
   themepark: "테마파크업 신고",
   rest_cafes: "휴게음식점 인허가",
+  umppa: "서울시 우리동네키움포털",
 };
 
 // 소스마다 시도 표기가 다르다 (놀이시설: "경기", 인허가: "경기도").
@@ -94,6 +119,7 @@ export function parseVenues(geojson: { features: Feature[] }): Venue[] {
       public: Boolean(p.public),
       phone: (p.phone as string | null | undefined) ?? null,
       homepage: (p.homepage as string | null | undefined) ?? null,
+      attrs: (p.attrs as VenueAttrs | null | undefined) ?? null,
     };
   });
 }

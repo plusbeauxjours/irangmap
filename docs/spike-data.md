@@ -139,3 +139,10 @@
 - 그 외: dev 모드(1.7MB 번들·StrictMode 이중 마운트)는 체감이 나쁨 → 테스트는 `pnpm build:web && pnpm start:web`. `localeCompare(x,"ko")`를 비교마다 호출하던 정렬은 Collator 1개로.
 - 측정 함정: chrome-devtools MCP 브라우저에서는 MapLibre 워커 왕복이 메시지당 0.3~2초(30건도 12초, v5.24도 동일)로 왜곡됨. 실제 Safari/Chrome(`?perf=1` → `/api/perf`)에서는 전체 1초 미만. 자동화 브라우저는 기능 검증에만 쓰고 성능 수치는 실제 브라우저로.
 
+## 2026-09-20 — 서울형 키즈카페(우리동네키움포털) 수집
+
+- robots.txt `/icare/` Allow. 목록 `BD_selectKidsCafeList.do`는 GET 폼(`q_hiddenVal=1&q_fcltyStle=2001&q_rowPerPage=5&q_currPage=N`) — `q_fcltyStle`·`q_hiddenVal` 없이 페이지만 넘기면 카드가 비어 돌아온다. 탭 2001 = 일반형, **2002 = 여기저기(이동형) 키즈카페**(아직 미수집).
+- 일반형 **140개소**(2026-09-20 목록 기준, 5개/페이지 × 28페이지). 카드에 시설명·fcltyId(`XX000000`)·썸네일·이용정원(개인/단체)·이용연령("4 ~ 10세 (연나이 기준)")·주소·전화.
+- 상세 `BD_selectKidsCafeView.do?q_fcltyId=…`: h 태그 섹션 `이용정원·이용연령·운영시간·온라인 예약·이용료·입장료 할인·이용규칙`. 정규식으로 아동 1명당 요금·보호자 무료·미끄럼방지 양말 필수·운영일/휴관일·회차 시간·주차를 뽑는다(`sources/umppa.py`, 픽스처 테스트 `tests/fixtures/umppa_*.html`).
+- 가드레일: `ENABLE_UMPPA` 킬스위치(기본 false), 요청 간 ≥5초, 단일 IP, 식별 UA, 403/429면 즉시 중단(우회 없음). 전량 = 28 + 140 = 168콜 ≈ 15분.
+- 매칭: `enrich_umppa.py` — 주소에서 괄호·층을 떼고 VWorld 지오코딩(캐시) → union 업소와 300 m 안 이름 유사도(strong/weak)로 접고, 없으면 `umppa:<fcltyId>` 단독 업소 추가(public). 결과 수치는 크롤 완료 후 아래에 추가.

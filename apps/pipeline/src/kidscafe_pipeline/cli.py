@@ -5,9 +5,10 @@ from pathlib import Path
 
 import typer
 
-from . import reports
+from . import enrich_umppa, reports
 from .config import REPO_ROOT, get_settings
-from .sources import fire_mu, playground, rest_cafes, themepark_other
+from .geocode import VWorldGeocoder
+from .sources import fire_mu, playground, rest_cafes, themepark_other, umppa
 from .sources.datagokr import PLAYGROUND_PAGING, DataGoKrClient
 
 app = typer.Typer(
@@ -254,8 +255,81 @@ def export_geojson(
     tp, _ = reports.load_themepark_kids(raw / "themepark_other.json")
     rc, _ = reports.load_rest_cafes_kids(str(raw / "rest_cafes.part*.jsonl.gz"))
     venues = reports.union_report(pg, tp, rc)["venues"]
+    umppa_stats = None
+    umppa_path = raw / "umppa.json"
+    if umppa_path.exists():
+        settings = get_settings()
+        facilities = json.loads(umppa_path.read_text(encoding="utf-8"))
+        coords = enrich_umppa.geocode_all(
+            facilities,
+            VWorldGeocoder(settings.vworld_key or ""),
+            raw.parent / "derived" / "umppa_geocode_cache.json",
+        )
+        umppa_stats = enrich_umppa.attach(venues, facilities, coords)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(reports.to_geojson(venues), ensure_ascii=False), encoding="utf-8"
     )
-    _echo({"features": len(venues), "out": str(out), "bytes": out.stat().st_size})
+    _echo(
+        {
+            "features": len(venues),
+            "umppa": umppa_stats,
+            "out": str(out),
+            "bytes": out.stat().st_size,
+        }
+    )
+
+
+@ingest_app.command("umppa")
+def ingest_umppa(
+    dry_run: bool = typer.Option(False, "--dry-run", help="DB에 쓰지 않고 집계만 출력"),
+    save: Path | None = typer.Option(None, help="시설+상세 JSON 저장 경로"),
+    max_pages: int | None = typer.Option(None, help="목록 페이지 상한 (스파이크용)"),
+    no_view: bool = typer.Option(
+        False, "--no-view", help="상세(이용안내) 페이지는 건너뜀"
+    ),
+) -> None:
+    """서울형 키즈카페(우리동네키움포털) 목록·이용안내를 수집한다.
+
+    ENABLE_UMPPA=true 필요, 요청 간 5초 이상.
+    """
+    settings = get_settings()
+    if not dry_run:
+        raise typer.BadParameter(
+            "DB 적재는 아직 구현 전 — 지금은 --dry-run만 지원합니다."
+        )
+    crawler = umppa.UmppaCrawler(enabled=settings.enable_umppa)
+
+    def progress(page, n):
+        print(f"page={page} facilities={n} calls={crawler.calls}", file=sys.stderr)
+
+    facilities = crawler.crawl(
+        max_pages=max_pages, with_view=not no_view, on_progress=progress
+    )
+    save = _repo_path(save)
+    if save:
+        save.parent.mkdir(parents=True, exist_ok=True)
+        save.write_text(
+            json.dumps(facilities, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
+    with_detail = [f for f in facilities if f.get("detail")]
+    _echo(
+        {
+            "source": umppa.SOURCE,
+            "facilities": len(facilities),
+            "with_detail": len(with_detail),
+            "calls": crawler.calls,
+            "age_ranges": sorted({f["age_text"] for f in facilities})[:12],
+            "guardian_free": sum(
+                1 for f in with_detail if f["detail"].get("guardian_free")
+            ),
+            "socks_required": sum(
+                1 for f in with_detail if f["detail"].get("socks_required")
+            ),
+            "fee_child_values": sorted(
+                {f["detail"].get("fee_child_krw") for f in with_detail} - {None}
+            ),
+            "saved_to": str(save) if save else None,
+            "dry_run": True,
+        }
+    )
