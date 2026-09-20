@@ -2,13 +2,21 @@ import gzip
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import typer
 
-from . import enrich_umppa, reports
+from . import enrich_umppa, extract_claude, reports
 from .config import REPO_ROOT, get_settings
 from .geocode import VWorldGeocoder
-from .sources import fire_mu, playground, rest_cafes, themepark_other, umppa
+from .sources import (
+    fire_mu,
+    official,
+    playground,
+    rest_cafes,
+    themepark_other,
+    umppa,
+)
 from .sources.datagokr import PLAYGROUND_PAGING, DataGoKrClient
 
 app = typer.Typer(
@@ -331,5 +339,131 @@ def ingest_umppa(
             ),
             "saved_to": str(save) if save else None,
             "dry_run": True,
+        }
+    )
+
+
+@ingest_app.command("official")
+def ingest_official(
+    channels: Path = typer.Option(
+        Path("data/raw/official/channels.json"), help="채널 조사 결과 JSON"
+    ),
+    out_dir: Path = typer.Option(Path("data/raw/official"), help="텍스트 저장 폴더"),
+    brands: str | None = typer.Option(None, help="쉼표로 브랜드 제한"),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="DB에 쓰지 않음(현재 유일 경로)"
+    ),
+) -> None:
+    """프랜차이즈 공식 사이트(매장 목록·이용안내)를 robots 준수·3초 간격으로 저장."""
+    if not dry_run:
+        raise typer.BadParameter("DB 적재는 아직 구현 전 — --dry-run만 지원합니다.")
+    ch_path = _repo_path(channels) or channels
+    out = _repo_path(out_dir) or out_dir
+    rows = json.loads(ch_path.read_text(encoding="utf-8"))
+    want = {b.strip() for b in brands.split(",")} if brands else None
+    fetcher = official.OfficialFetcher(out)
+    saved, skipped, errors = [], [], []
+    for row in rows:
+        if want and row["brand"] not in want:
+            continue
+        if row.get("brand_type") == "generic":
+            skipped.append(row["brand"])
+            continue
+        for kind in ("official_url", "store_list_url", "info_url"):
+            url = row.get(kind)
+            if not url:
+                continue
+            meta = fetcher.fetch(row["brand"], url, kind.replace("_url", ""))
+            if meta is None:
+                errors.append({"brand": row["brand"], "url": url, "error": "blocked"})
+            elif meta.get("error"):
+                errors.append(meta)
+            else:
+                saved.append({k: meta[k] for k in ("brand", "kind", "chars", "url")})
+                print(
+                    f"saved {meta['brand']} {meta['kind']} {meta['chars']}c",
+                    file=sys.stderr,
+                )
+    _echo(
+        {
+            "saved": len(saved),
+            "calls": fetcher.calls,
+            "generic_skipped": skipped,
+            "errors": errors,
+            "out_dir": str(out),
+            "dry_run": True,
+        }
+    )
+
+
+extract_app = typer.Typer(
+    no_args_is_help=True, help="저장된 원문 → 구조화 속성 (claude -p)"
+)
+app.add_typer(extract_app, name="extract")
+
+
+@extract_app.command("official")
+def extract_official(
+    in_dir: Path = typer.Option(
+        Path("data/raw/official"), help="ingest official 산출 폴더"
+    ),
+    out: Path = typer.Option(
+        Path("data/derived/official_attrs.json"), help="결과 JSON"
+    ),
+    model: str = typer.Option("sonnet", help="claude -p 모델 별칭"),
+    brands: str | None = typer.Option(None, help="쉼표로 브랜드 제한"),
+    limit: int | None = typer.Option(None, help="처리할 페이지 수 상한(스파이크용)"),
+    redo: bool = typer.Option(False, "--redo", help="이미 추출된 페이지도 다시"),
+) -> None:
+    """저장 텍스트를 Claude Code 헤드리스로 읽어 속성을 뽑는다(증분, 재시작 안전)."""
+    src = _repo_path(in_dir) or in_dir
+    out = _repo_path(out) or out
+    results: dict[str, Any] = {}
+    if out.exists() and not redo:
+        results = json.loads(out.read_text(encoding="utf-8"))
+    want = {b.strip() for b in brands.split(",")} if brands else None
+    metas = sorted(p for p in src.glob("*/*.json"))
+    done = 0
+    cost = 0.0
+    for mp in metas:
+        meta = json.loads(mp.read_text(encoding="utf-8"))
+        if want and meta["brand"] not in want:
+            continue
+        key = f"{meta['brand']}|{meta['url']}"
+        if key in results and not redo:
+            continue
+        if limit is not None and done >= limit:
+            break
+        text = (mp.parent / meta["text_file"]).read_text(encoding="utf-8")
+        if len(text) < 80:
+            results[key] = {
+                "error": "too short",
+                "brand": meta["brand"],
+                "url": meta["url"],
+            }
+            continue
+        data = extract_claude.extract(
+            text, brand=meta["brand"], url=meta["url"], model=model
+        )
+        data.update({"brand": meta["brand"], "url": meta["url"], "kind": meta["kind"]})
+        data["observed_at"] = meta["fetched_at"][:10]
+        results[key] = data
+        done += 1
+        cost += (data.get("_usage") or {}).get("cost_usd") or 0.0
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(
+            json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8"
+        )
+        print(
+            f"{meta['brand']:10s} {meta['kind']:6s} conf={data.get('confidence')} "
+            f"age={data.get('age_range')} fee={str(data.get('child_fee'))[:30]}",
+            file=sys.stderr,
+        )
+    _echo(
+        {
+            "extracted_now": done,
+            "total": len(results),
+            "cost_usd_now": round(cost, 3),
+            "out": str(out),
         }
     )

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { DEFAULT_FILTERS, filterVenues, inBounds, parseVenues, type Bounds, type Filters, type Venue } from "@/lib/venues";
 
 import { FiltersBar } from "./Filters";
+import { Blocks } from "./icons";
 import { VenueDetail } from "./VenueDetail";
 import { VenueList } from "./VenueList";
 
@@ -72,7 +73,7 @@ export function Explorer() {
     <div className="grid h-screen grid-rows-[45vh_1fr] md:grid-cols-[420px_1fr] md:grid-rows-1">
       <aside className="order-2 flex min-h-0 flex-col overflow-hidden border-t border-neutral-200 md:order-1 md:border-r md:border-t-0">
         <header className="flex items-baseline justify-between px-4 pt-4">
-          <h1 className="text-lg font-semibold tracking-tight">키즈카페 지도</h1>
+          <h1 className="flex items-center gap-1.5 text-lg font-semibold tracking-tight"><Blocks size={18} className="text-rose-600" /> 키즈카페 지도</h1>
           <span className="text-xs text-neutral-400">MVP · 공공데이터 시드</span>
         </header>
         <FiltersBar filters={filters} onChange={setFilters} total={venues.length} visible={visible.length} />

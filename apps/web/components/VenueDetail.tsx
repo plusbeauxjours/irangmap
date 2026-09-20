@@ -1,146 +1,200 @@
 "use client";
 
-import { ATTRIBUTE_SCHEMA, CATEGORY_LABEL, SOURCE_LABEL, linkouts, type Venue, type VenueAttrs } from "@/lib/venues";
+import { useState, type ReactNode } from "react";
+
+import { CATEGORY_LABEL, SOURCE_LABEL, linkouts, type Venue } from "@/lib/venues";
+
+import { ArrowLeft, BadgeCheck, Building2, CalendarCheck, Camera, CategoryIcon, ChevronDown, ChevronUp, CircleCheck, CircleHelp, Clock, ExternalLink, Home, Info, MapPin, Phone } from "./icons";
+import { QuickFacts } from "./QuickFacts";
 
 interface Props {
   venue: Venue;
   onBack: () => void;
 }
 
-/** 스키마 키 → 수집된 값(문자열). 없으면 null → "확인 필요". */
-function valueFor(key: (typeof ATTRIBUTE_SCHEMA)[number]["key"], a: VenueAttrs | null | undefined): string | null {
-  if (!a) return null;
-  switch (key) {
-    case "age_range":
-      return a.age_range ?? null;
-    case "guardian_fee":
-      return a.guardian_fee ?? null;
-    case "child_fee":
-      return a.child_fee ?? null;
-    case "socks":
-      return a.socks ?? null;
-    case "amenities": {
-      const parts = [a.parking, a.capacity ? `정원 개인 ${a.capacity["개인"] ?? "-"}명 · 단체 ${a.capacity["단체"] ?? "-"}명` : null].filter(Boolean);
-      return parts.length ? parts.join(" · ") : null;
-    }
-    case "notes":
-      return a.notes ?? null;
-    default:
-      return null;
-  }
+function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
+  return (
+    <section>
+      <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-neutral-500">
+        {icon}
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
 }
+
+/** 긴 안내문은 3줄만 보이고 "더보기"로 펼친다. */
+function Collapsible({ title, text }: { title: string; text: string }) {
+  const [open, setOpen] = useState(false);
+  const long = text.length > 140 || text.split("\n").length > 3;
+  return (
+    <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-neutral-800">{title}</span>
+        {long && (
+          <button type="button" onClick={() => setOpen(!open)} className="flex items-center gap-0.5 text-xs text-neutral-500 hover:text-neutral-900" aria-expanded={open}>
+            {open ? "접기" : "더보기"}
+            {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        )}
+      </div>
+      <p className={`mt-1 whitespace-pre-line text-xs leading-relaxed text-neutral-600 ${open || !long ? "" : "line-clamp-3"}`}>{text}</p>
+    </div>
+  );
+}
+
+const btn = "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition";
 
 export function VenueDetail({ venue: v, onBack }: Props) {
   const a = v.attrs;
+  const [allSlots, setAllSlots] = useState(false);
+  const slots = a?.hours ?? [];
+  const shownSlots = allSlots ? slots : slots.slice(0, 4);
+
   return (
     <div className="flex flex-col gap-5 p-4">
-      <button type="button" onClick={onBack} className="self-start text-sm text-neutral-500 hover:text-neutral-900">
-        ← 목록으로
+      <button type="button" onClick={onBack} className="inline-flex items-center gap-1 self-start text-sm text-neutral-500 hover:text-neutral-900">
+        <ArrowLeft size={16} /> 목록으로
       </button>
 
-      <header>
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-xl font-semibold leading-tight">{v.name}</h2>
-          <span className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium ${v.category === "trampoline_park" ? "bg-blue-50 text-blue-700" : "bg-rose-50 text-rose-700"}`}>
-            {CATEGORY_LABEL[v.category]}
-          </span>
+      <header className="flex gap-3">
+        <CategoryIcon category={v.category} size={22} className="mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-semibold leading-tight">{v.name}</h2>
+          <p className="mt-1 flex items-start gap-1 text-sm text-neutral-600">
+            <MapPin size={14} className="mt-0.5 shrink-0 text-neutral-400" />
+            <span>{v.addr || "주소 없음"}</span>
+          </p>
+          <p className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+            <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-neutral-700">{CATEGORY_LABEL[v.category]}</span>
+            {v.indoor && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-neutral-700">
+                <Home size={12} /> {v.indoor}
+              </span>
+            )}
+            {v.public && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">
+                <Building2 size={12} /> 공공 운영
+              </span>
+            )}
+            {v.sources.length > 1 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-0.5 text-neutral-700" title="서로 다른 공공데이터에서 같은 업소로 확인됨">
+                <BadgeCheck size={12} /> {v.sources.length}종 교차 확인
+              </span>
+            )}
+          </p>
         </div>
-        <p className="mt-1 text-sm text-neutral-600">{v.addr || "주소 없음"}</p>
-        <p className="mt-2 flex flex-wrap gap-1 text-[11px] text-neutral-600">
-          {v.indoor && <span className="rounded border border-neutral-200 px-1.5 py-0.5">{v.indoor}</span>}
-          {v.public && <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-emerald-700">공공 운영</span>}
-          {v.sources.length > 1 && <span className="rounded border border-neutral-200 px-1.5 py-0.5">공공데이터 {v.sources.length}종 교차 확인</span>}
-        </p>
       </header>
 
-      {a && (
-        <section className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-medium text-emerald-900">
-              {a.source_label}에서 확인 <span className="ml-1 text-xs font-normal text-emerald-700">{a.observed_at}</span>
-            </p>
-            {a.reservation_url && (
-              <a href={a.reservation_url} target="_blank" rel="noopener noreferrer" className="rounded-full bg-emerald-600 px-3 py-1 text-sm font-medium text-white hover:bg-emerald-700">
-                예약 페이지 ↗
-              </a>
-            )}
-          </div>
-          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-            {a.operating_days && (<><dt className="text-neutral-500">운영일</dt><dd>{a.operating_days}</dd></>)}
-            {a.closed_days && (<><dt className="text-neutral-500">휴관일</dt><dd>{a.closed_days}</dd></>)}
-            {a.hours && a.hours.length > 0 ? (
-              <><dt className="text-neutral-500">회차</dt><dd className="flex flex-wrap gap-1">{a.hours.map((h) => <span key={h} className="rounded bg-white px-1.5 py-0.5 text-xs">{h}</span>)}</dd></>
-            ) : a.hours_text ? (
-              <><dt className="text-neutral-500">운영시간</dt><dd className="whitespace-pre-line text-xs">{a.hours_text.slice(0, 300)}</dd></>
-            ) : null}
-            {a.reservation && (<><dt className="text-neutral-500">예약</dt><dd>{a.reservation}</dd></>)}
-          </dl>
-          <p className="mt-2 flex flex-wrap gap-3 text-xs">
-            {a.evidence_url && <a href={a.evidence_url} target="_blank" rel="noopener noreferrer" className="text-emerald-800 underline">원문(이용안내) 보기</a>}
-            {a.photo_url && <a href={a.photo_url} target="_blank" rel="noopener noreferrer" className="text-emerald-800 underline">시설 사진 보기(서울시)</a>}
-          </p>
-        </section>
+      {a ? (
+        <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+          <CircleCheck size={14} className="shrink-0" />
+          <span>
+            <strong>{a.source_label}</strong>에서 확인 · {a.observed_at}
+          </span>
+        </p>
+      ) : (
+        <p className="flex items-start gap-1.5 rounded-lg bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+          <CircleHelp size={14} className="mt-0.5 shrink-0 text-neutral-400" />
+          <span>
+            아직 확인된 이용 정보가 없어요. <span className="text-neutral-500">공식 채널·사업자 확인·이용자 제보로 채워지며, 채워질 때 출처와 확인일이 함께 표시됩니다.</span>
+          </span>
+        </p>
       )}
 
-      <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">연락·바로가기</h3>
-        {v.phone ? (
-          <a href={`tel:${v.phone.replace(/[^\d+]/g, "")}`} className="block text-sm font-medium text-neutral-900 underline-offset-2 hover:underline">
-            📞 {v.phone}
-          </a>
-        ) : (
-          <p className="text-sm text-neutral-500">전화번호 미확인 (인허가 데이터에 없음)</p>
-        )}
-        <div className="mt-2 flex flex-wrap gap-2">
+      <QuickFacts attrs={a} />
+
+      {a && (a.operating_days || a.closed_days || slots.length > 0 || a.hours_text) && (
+        <Section icon={<Clock size={14} />} title="운영">
+          <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+              {a.operating_days && (
+                <>
+                  <dt className="text-neutral-500">운영일</dt>
+                  <dd className="font-medium">{a.operating_days}</dd>
+                </>
+              )}
+              {a.closed_days && (
+                <>
+                  <dt className="text-neutral-500">휴관일</dt>
+                  <dd>{a.closed_days}</dd>
+                </>
+              )}
+            </dl>
+            {slots.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {shownSlots.map((h) => (
+                  <span key={h} className="rounded bg-neutral-100 px-1.5 py-0.5 text-xs">{h}</span>
+                ))}
+                {slots.length > 4 && (
+                  <button type="button" onClick={() => setAllSlots(!allSlots)} className="rounded px-1.5 py-0.5 text-xs text-neutral-500 underline">
+                    {allSlots ? "접기" : `+${slots.length - 4}회차`}
+                  </button>
+                )}
+              </div>
+            ) : (
+              a.hours_text && <p className="mt-2 whitespace-pre-line text-xs text-neutral-600">{a.hours_text.slice(0, 300)}</p>
+            )}
+          </div>
+        </Section>
+      )}
+
+      <Section icon={<Phone size={14} />} title="연락·바로가기">
+        <div className="flex flex-wrap gap-2">
+          {v.phone ? (
+            <a href={`tel:${v.phone.replace(/[^\d+]/g, "")}`} className={`${btn} border-neutral-900 bg-neutral-900 text-white hover:bg-neutral-700`}>
+              <Phone size={14} /> {v.phone}
+            </a>
+          ) : (
+            <span className={`${btn} border-dashed border-neutral-300 text-neutral-400`}>
+              <Phone size={14} /> 전화 미확인
+            </span>
+          )}
+          {a?.reservation_url && (
+            <a href={a.reservation_url} target="_blank" rel="noopener noreferrer" className={`${btn} border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700`}>
+              <CalendarCheck size={14} /> 예약
+            </a>
+          )}
+          {a?.evidence_url && (
+            <a href={a.evidence_url} target="_blank" rel="noopener noreferrer" className={`${btn} border-neutral-300 text-neutral-700 hover:border-neutral-900`}>
+              <ExternalLink size={14} /> 원문
+            </a>
+          )}
+          {a?.photo_url && (
+            <a href={a.photo_url} target="_blank" rel="noopener noreferrer" className={`${btn} border-neutral-300 text-neutral-700 hover:border-neutral-900`}>
+              <Camera size={14} /> 사진
+            </a>
+          )}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {linkouts(v).map((l) => (
-            <a key={l.key} href={l.href} target="_blank" rel="noopener noreferrer" className="rounded-full border border-neutral-300 px-3 py-1 text-sm hover:border-neutral-900">
-              {l.label} ↗
+            <a key={l.key} href={l.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-full bg-neutral-100 px-2.5 py-1 text-xs text-neutral-700 hover:bg-neutral-200">
+              {l.label} <ExternalLink size={11} />
             </a>
           ))}
         </div>
-        <p className="mt-2 text-xs text-neutral-500">사진·리뷰·영업시간은 위 서비스에서 확인하세요. 이 페이지는 외부 리뷰·사진을 저장하지 않습니다.</p>
-      </section>
+        <p className="mt-2 text-[11px] text-neutral-400">리뷰·사진은 외부 서비스에서 확인하세요. 이 페이지는 외부 리뷰·사진을 저장하지 않습니다.</p>
+      </Section>
 
-      <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">이용 정보</h3>
-        <dl className="divide-y divide-neutral-100 rounded-lg border border-neutral-200">
-          {ATTRIBUTE_SCHEMA.map((attr) => {
-            const val = valueFor(attr.key, a);
-            return (
-              <div key={attr.key} className="flex items-start justify-between gap-3 px-3 py-2">
-                <dt className="shrink-0 text-sm text-neutral-700">{attr.label}</dt>
-                {val ? (
-                  <dd className="whitespace-pre-line text-right text-sm text-neutral-900">
-                    {val}
-                    {attr.key === "age_range" && a?.age_rules && a.age_rules !== val && (
-                      <p className="mt-0.5 max-w-[240px] text-xs text-neutral-500">{a.age_rules}</p>
-                    )}
-                  </dd>
-                ) : (
-                  <dd className="text-right text-xs text-neutral-400">
-                    <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-neutral-500">확인 필요</span>
-                    <p className="mt-0.5 max-w-[200px]">{attr.hint}</p>
-                  </dd>
-                )}
-              </div>
-            );
-          })}
-        </dl>
-        {a?.discounts && (
-          <p className="mt-2 whitespace-pre-line rounded border border-neutral-200 bg-neutral-50 p-2 text-xs text-neutral-600">
-            <span className="font-medium text-neutral-800">입장료 할인</span> {a.discounts}
-          </p>
-        )}
-        <p className="mt-2 text-xs text-neutral-500">
-          {a
-            ? `값은 ${a.source_label} 공개 정보(${a.observed_at} 확인)이며, 최신 내용은 원문·예약 페이지에서 다시 확인하세요.`
-            : "이 항목들은 공식 홈페이지·인스타그램·사업자 확인·이용자 제보로 채워지며, 채워질 때 출처와 확인일이 함께 표시됩니다."}
-        </p>
-      </section>
+      {a && (a.age_rules || a.notes || a.discounts || a.capacity || a.parking) && (
+        <Section icon={<Info size={14} />} title="자세한 안내">
+          <div className="flex flex-col gap-2">
+            {a.age_rules && <Collapsible title="이용 연령·대상" text={a.age_rules} />}
+            {(a.capacity || a.parking) && (
+              <Collapsible
+                title="정원·주차"
+                text={[a.capacity ? `정원 개인 ${a.capacity["개인"] ?? "-"}명 · 단체 ${a.capacity["단체"] ?? "-"}명` : null, a.parking].filter(Boolean).join("\n")}
+              />
+            )}
+            {a.discounts && <Collapsible title="입장료 할인" text={a.discounts} />}
+            {a.notes && <Collapsible title="유의사항" text={a.notes} />}
+          </div>
+        </Section>
+      )}
 
-      <section>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-neutral-400">출처</h3>
-        <ul className="space-y-1 text-xs text-neutral-600">
+      <Section icon={<BadgeCheck size={14} />} title="출처">
+        <ul className="space-y-0.5 text-xs text-neutral-600">
           {v.sources.map((s) => {
             const [src, ...rest] = s.split(":");
             return (
@@ -151,10 +205,10 @@ export function VenueDetail({ venue: v, onBack }: Props) {
             );
           })}
         </ul>
-      </section>
+      </Section>
 
-      <button type="button" disabled className="rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-sm text-neutral-400" title="준비 중">
-        정보 제보 · 사업자 확인 (준비 중)
+      <button type="button" disabled className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-sm text-neutral-400" title="준비 중">
+        <Info size={14} /> 정보 제보 · 사업자 확인 (준비 중)
       </button>
     </div>
   );

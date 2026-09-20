@@ -54,6 +54,7 @@ export interface Filters {
   multiSourceOnly: boolean;
   indoorOnly: boolean;
   publicOnly: boolean;
+  verifiedOnly: boolean;
 }
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -132,6 +133,7 @@ export const DEFAULT_FILTERS: Filters = {
   multiSourceOnly: false,
   indoorOnly: false,
   publicOnly: false,
+  verifiedOnly: false,
 };
 
 export function filterVenues(venues: Venue[], f: Filters): Venue[] {
@@ -141,6 +143,7 @@ export function filterVenues(venues: Venue[], f: Filters): Venue[] {
     if (f.multiSourceOnly && v.sources.length < 2) return false;
     if (f.indoorOnly && v.indoor !== "실내") return false;
     if (f.publicOnly && !v.public) return false;
+    if (f.verifiedOnly && !v.attrs) return false;
     if (q && !`${v.name} ${v.addr}`.toLowerCase().includes(q)) return false;
     return true;
   });
@@ -157,7 +160,7 @@ export function toFeatureCollection(venues: Venue[]) {
       type: "Feature" as const,
       id: v.id,
       geometry: { type: "Point" as const, coordinates: [v.lon, v.lat] },
-      properties: { id: v.id, name: v.name, category: v.category, addr: v.addr, sources: v.sources.length },
+      properties: { id: v.id, name: v.name, category: v.category, addr: v.addr, sources: v.sources.length, verified: v.attrs ? 1 : 0 },
     })),
   };
 }

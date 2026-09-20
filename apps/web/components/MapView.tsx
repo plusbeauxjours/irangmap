@@ -129,8 +129,9 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
         paint: {
           "circle-color": COLOR_BY_CATEGORY,
           "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 4, 14, 8],
-          "circle-stroke-color": "#fff",
-          "circle-stroke-width": 1.5,
+          // 이용 정보가 확인된 업소는 초록 링 — 리스트의 체크 아이콘과 같은 뜻
+          "circle-stroke-color": ["case", ["==", ["get", "verified"], 1], "#059669", "#fff"],
+          "circle-stroke-width": ["case", ["==", ["get", "verified"], 1], 3, 1.5],
         },
       });
       map.addLayer({
@@ -181,12 +182,13 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
       map.on("click", "points", (e) => {
         const f = e.features?.[0];
         if (!f) return;
-        const p = f.properties as { id: number; name: string; category: keyof typeof CATEGORY_LABEL; addr: string; sources: number };
+        const p = f.properties as { id: number; name: string; category: keyof typeof CATEGORY_LABEL; addr: string; sources: number; verified: number };
         onSelect(Number(p.id));
+        const verified = Number(p.verified) === 1 ? `<br/><span style="color:#059669">✓ 이용 정보 확인됨</span>` : "";
         new Popup({ offset: 10, closeButton: false })
           .setLngLat(coordsOf(f.geometry))
           .setHTML(
-            `<div style="font:13px/1.4 system-ui"><strong>${p.name}</strong><br/>${CATEGORY_LABEL[p.category] ?? p.category} · 출처 ${p.sources}개<br/><span style="color:#555">${p.addr}</span></div>`,
+            `<div style="font:13px/1.4 system-ui"><strong>${p.name}</strong><br/>${CATEGORY_LABEL[p.category] ?? p.category}${verified}<br/><span style="color:#555">${p.addr}</span></div>`,
           )
           .addTo(map);
       });
@@ -238,6 +240,12 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
   return (
     <div className="relative h-full w-full">
       <div ref={container} className="h-full w-full" role="region" aria-label="지도" />
+      <div className="pointer-events-none absolute bottom-6 left-3 flex flex-col gap-1 rounded-lg bg-white/90 px-3 py-2 text-[11px] text-neutral-700 shadow" aria-label="범례">
+        <span className="flex items-center gap-2"><i className="inline-block h-3 w-3 rounded-full border-2 border-white" style={{ background: "#e11d48" }} /> 키즈카페</span>
+        <span className="flex items-center gap-2"><i className="inline-block h-3 w-3 rounded-full border-2 border-white" style={{ background: "#2563eb" }} /> 트램폴린</span>
+        <span className="flex items-center gap-2"><i className="inline-block h-3 w-3 rounded-full border-2" style={{ background: "#e11d48", borderColor: "#059669" }} /> 이용 정보 확인됨</span>
+        <span className="flex items-center gap-2"><i className="inline-block h-3 w-3 rounded-full text-center text-[7px] font-bold leading-3 text-white" style={{ background: "#f43f5e" }}>9</i> 묶음 · 클릭해 펼치기</span>
+      </div>
       {!sourceLoaded && (
         <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-neutral-900/80 px-3 py-1 text-xs text-white shadow">
           {ready ? "업소 위치 표시 중…" : "지도 불러오는 중…"}
