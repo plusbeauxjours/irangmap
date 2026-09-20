@@ -8,6 +8,8 @@ import { DEFAULT_FILTERS, filterVenues, inBounds, parseVenues, type Bounds, type
 import { FiltersBar } from "./Filters";
 import { VenueList } from "./VenueList";
 
+const KO_COLLATOR = new Intl.Collator("ko");
+
 const MapView = dynamic(() => import("./MapView").then((m) => m.MapView), {
   ssr: false,
   loading: () => <div className="flex h-full items-center justify-center text-sm text-neutral-500">지도를 불러오는 중…</div>,
@@ -24,16 +26,43 @@ export function Explorer() {
   useEffect(() => {
     fetch("/data/venues.geojson")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status}`))))
-      .then((gj) => setVenues(parseVenues(gj)))
+      .then((gj) => {
+        performance.mark("kc:geojson-fetched");
+        const parsed = parseVenues(gj);
+        performance.mark("kc:venues-parsed");
+        setVenues(parsed);
+      })
       .catch((e: Error) => setError(`데이터를 불러오지 못했습니다 (${e.message}). pnpm data:sync 를 실행했나요?`));
   }, []);
 
   const filtered = useMemo(() => filterVenues(venues, filters), [venues, filters]);
   const visible = useMemo(() => {
     const list = bounds ? filtered.filter((v) => inBounds(v, bounds)) : filtered;
-    return [...list].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+    // localeCompare(x, "ko")를 비교마다 호출하면 Collator를 매번 만들어 2,845건 정렬에 수 초가 걸린다.
+    return [...list].sort((a, b) => KO_COLLATOR.compare(a.name, b.name));
   }, [filtered, bounds]);
   const selected = useMemo(() => venues.find((v) => v.id === selectedId) ?? null, [venues, selectedId]);
+
+  useEffect(() => {
+    if (venues.length) performance.mark("kc:list-rendered");
+  }, [venues]);
+
+  // 진단: `/?perf=1`이면 8초·25초 시점의 마크를 서버(/api/perf)에 보낸다.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("perf") !== "1") return;
+    const report = () => {
+      const marks: Record<string, number> = {};
+      for (const m of performance.getEntriesByType("mark")) if (m.name.startsWith("kc:")) marks[m.name] = Math.round(m.startTime);
+      const q = new URLSearchParams({ ua: navigator.userAgent.slice(-45), marks: JSON.stringify(marks) });
+      fetch(`/api/perf?${q}`).catch(() => undefined);
+    };
+    const t1 = setTimeout(report, 8000);
+    const t2 = setTimeout(report, 25000);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
 
   const onBoundsChange = useCallback((b: Bounds) => setBounds(b), []);
   const onSelect = useCallback((id: number) => setSelectedId(id), []);

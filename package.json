@@ -17,6 +17,7 @@
     "lint": "pnpm lint:web && pnpm lint:pipeline",
     "test": "pnpm test:web && pnpm test:pipeline",
     "build": "pnpm build:web",
-    "data:sync": "mkdir -p apps/web/public/data && cp data/derived/venues.geojson apps/web/public/data/venues.geojson"
+    "data:sync": "mkdir -p apps/web/public/data && cp data/derived/venues.geojson apps/web/public/data/venues.geojson",
+    "start:web": "pnpm --filter @kidscafe/web exec next start -p 3000"
   }
 }

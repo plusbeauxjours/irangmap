@@ -1,1 +1,9 @@
 @import "tailwindcss";
+
+/* 지도 클러스터 숫자 라벨 (MapView, HTML Marker) — 원격 글리프 대신 DOM으로 그린다 */
+.kc-cluster-label {
+  pointer-events: none;
+  color: #fff;
+  font: 600 12px/1 system-ui, sans-serif;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.35);
+}

@@ -71,6 +71,16 @@ pnpm dev:web                                    # http://localhost:3000 (predev�
 
 지도 라이브러리 메모: 카카오맵 JS SDK 대신 MapLibre + VWorld 타일(무료, 키 있음)로 시작했다. 리스트·필터·동기화 로직은 지도 라이브러리와 무관하므로 카카오로 바꿔도 `components/MapView.tsx`만 갈아 끼우면 된다. maplibre-gl 6의 모듈 워커는 Next 번들러가 URL을 못 만들어 `setWorkerUrl("/vendor/maplibre-gl-worker.mjs")`로 고정한다.
 
+체감 속도로 볼 때는 **프로덕션 모드**로 본다(dev 모드는 번들 1.7MB·StrictMode 이중 마운트로 지도가 훨씬 무겁다):
+
+```bash
+pnpm build:web && pnpm start:web          # http://localhost:3000
+```
+
+성능 진단: `http://localhost:3000/?perf=1`로 열면 8초·25초 시점에 `performance.mark` 타임라인(`kc:geojson-fetched` → `kc:list-rendered` → `kc:map-load` → `kc:venues-source-loaded`)을 `/api/perf`로 보내 서버 로그에 남긴다. 2026-09-20 실측(M1 Max, 프로덕션): Safari 0.98초 / Chrome 0.93초에 지도·마커·리스트 완료. 주의: DevTools 프로토콜이 붙은 자동화 브라우저(chrome-devtools MCP 등)에서는 MapLibre 워커 왕복이 수십 배 느려져 12~150초로 측정되므로 성능 판단에 쓰지 않는다.
+
+지도가 배경만 뜨고 마커가 없거나 수십 초 걸리면 두 가지를 먼저 본다: ① `public/vendor/maplibre-gl-worker.mjs`가 있는지(`pnpm vendor`) ② 스타일에 원격 `glyphs`가 남아 있는지(폰트 404가 타일 완료를 막는다 — 클러스터 숫자는 HTML 라벨로 그린다).
+
 전체 검증:
 
 ```bash

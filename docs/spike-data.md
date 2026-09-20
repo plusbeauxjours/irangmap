@@ -133,3 +133,9 @@
 - 산출물: `data/derived/venues.geojson`(2,845 features, 0.97MB) · `data/derived/seeds-report.json`.
 - CLI 주의: `pnpm pipeline …`은 `uv run --directory apps/pipeline`이라 cwd가 바뀐다 → 상대 경로 인자는 repo 루트 기준으로 풀도록 `_repo_path` 적용.
 
+## 2026-09-20 — 지도 MVP 성능 조사 ("데이터가 아예 안 보인다")
+
+- 실제 원인 2개(둘 다 수정): ① maplibre-gl 6 모듈 워커 URL을 Next 번들러가 못 만들어 GeoJSON 소스가 영원히 로딩 → `pnpm vendor` + `setWorkerUrl` ② 클러스터 숫자 symbol 레이어의 원격 글리프(demotiles) 404가 타일 완료를 막아 마커가 40초 지연 → 글리프 제거, 숫자는 HTML Marker.
+- 그 외: dev 모드(1.7MB 번들·StrictMode 이중 마운트)는 체감이 나쁨 → 테스트는 `pnpm build:web && pnpm start:web`. `localeCompare(x,"ko")`를 비교마다 호출하던 정렬은 Collator 1개로.
+- 측정 함정: chrome-devtools MCP 브라우저에서는 MapLibre 워커 왕복이 메시지당 0.3~2초(30건도 12초, v5.24도 동일)로 왜곡됨. 실제 Safari/Chrome(`?perf=1` → `/api/perf`)에서는 전체 1초 미만. 자동화 브라우저는 기능 검증에만 쓰고 성능 수치는 실제 브라우저로.
+

@@ -4,6 +4,7 @@ import {
   type ExpressionSpecification,
   type GeoJSONSource,
   Map as MLMap,
+  Marker,
   NavigationControl,
   Popup,
   setWorkerUrl,
@@ -46,15 +47,17 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
   const mapRef = useRef<MLMap | null>(null);
   // 데이터 fetch와 지도 load의 순서가 보장되지 않으므로 state로 두고 effect를 다시 돌린다.
   const [ready, setReady] = useState(false);
+  const [sourceLoaded, setSourceLoaded] = useState(false);
+  const labelsRef = useRef<Map<number, Marker>>(new Map());
 
   // 지도 생성 (1회)
   useEffect(() => {
     if (!container.current || mapRef.current) return;
+    performance.mark("kc:map-create");
     const map = new MLMap({
       container: container.current,
       style: {
         version: 8,
-        glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
         sources: { base: { type: "raster", tiles: [TILES], tileSize: 256, attribution: ATTRIBUTION, maxzoom: 19 } },
         layers: [{ id: "base", type: "raster", source: "base" }],
       },
@@ -71,6 +74,7 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
     };
 
     map.on("load", () => {
+      performance.mark("kc:map-load");
       map.addSource("venues", {
         type: "geojson",
         data: toFeatureCollection([]),
@@ -93,14 +97,6 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
         },
       });
       map.addLayer({
-        id: "cluster-count",
-        type: "symbol",
-        source: "venues",
-        filter: ["has", "point_count"],
-        layout: { "text-field": ["get", "point_count_abbreviated"], "text-size": 12, "text-font": ["Open Sans Bold"] },
-        paint: { "text-color": "#fff" },
-      });
-      map.addLayer({
         id: "points",
         type: "circle",
         source: "venues",
@@ -117,6 +113,37 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
         type: "circle",
         source: "hover",
         paint: { "circle-color": "rgba(0,0,0,0)", "circle-radius": 14, "circle-stroke-color": "#111827", "circle-stroke-width": 3 },
+      });
+
+      // 클러스터 숫자: symbol 레이어는 원격 글리프(폰트)가 필요해 404·지연에 취약하다 → HTML 라벨.
+      const syncClusterLabels = () => {
+        const seen = new Set<number>();
+        for (const f of map.queryRenderedFeatures({ layers: ["clusters"] })) {
+          const id = f.properties.cluster_id as number;
+          seen.add(id);
+          if (!labelsRef.current.has(id)) {
+            const el = document.createElement("div");
+            el.className = "kc-cluster-label";
+            el.textContent = String(f.properties.point_count_abbreviated);
+            labelsRef.current.set(
+              id,
+              new Marker({ element: el }).setLngLat(coordsOf(f.geometry)).addTo(map),
+            );
+          }
+        }
+        for (const [id, marker] of labelsRef.current) {
+          if (!seen.has(id)) {
+            marker.remove();
+            labelsRef.current.delete(id);
+          }
+        }
+      };
+      map.on("idle", syncClusterLabels);
+      map.on("sourcedata", (e) => {
+        if (e.sourceId === "venues" && e.isSourceLoaded) {
+          performance.mark("kc:venues-source-loaded");
+          setSourceLoaded(true);
+        }
       });
 
       map.on("click", "clusters", async (e) => {
@@ -150,9 +177,12 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
     });
     map.on("moveend", emitBounds);
     return () => {
+      for (const marker of labelsRef.current.values()) marker.remove();
+      labelsRef.current.clear();
       map.remove();
       mapRef.current = null;
       setReady(false);
+      setSourceLoaded(false);
     };
     // onBoundsChange/onSelect는 부모가 useCallback으로 고정하므로 1회 생성으로 충분하다.
   }, []);
@@ -179,5 +209,14 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
     map.flyTo({ center: [selected.lon, selected.lat], zoom: Math.max(map.getZoom(), 15), speed: 1.4 });
   }, [selected]);
 
-  return <div ref={container} className="h-full w-full" role="region" aria-label="지도" />;
+  return (
+    <div className="relative h-full w-full">
+      <div ref={container} className="h-full w-full" role="region" aria-label="지도" />
+      {!sourceLoaded && (
+        <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-neutral-900/80 px-3 py-1 text-xs text-white shadow">
+          {ready ? "업소 위치 표시 중…" : "지도 불러오는 중…"}
+        </div>
+      )}
+    </div>
+  );
 }
