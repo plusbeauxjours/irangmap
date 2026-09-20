@@ -27,12 +27,16 @@ data/raw/**
 !data/raw/official/
 !data/raw/official/channels.json
 # 파생 산출물 (원본에서 재생성 가능)
-data/derived/
+data/derived/*
+# 작은 파생 파일은 커밋: 정기 갱신 워크플로가 재사용한다
+!data/derived/official_attrs*.json
+!data/derived/umppa_geocode_cache.json
 
 # OMC 세션 상태 (도구 로컬)
 .omc/
 
 # 웹이 읽는 파생 데이터 (pnpm data:sync로 재생성)
-apps/web/public/data/
+apps/web/public/data/*
+!apps/web/public/data/venues.geojson
 # maplibre 워커 (node_modules에서 pnpm vendor로 복사)
 apps/web/public/vendor/

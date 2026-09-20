@@ -1,0 +1,89 @@
+name: Refresh data
+
+# 공공데이터·서울형 키즈카페를 정기 수집해 지도 GeoJSON을 갱신하고 커밋한다.
+# 커밋이 생기면 Vercel이 자동 재배포한다. 프랜차이즈 추출(claude -p)은 로그인 세션이 필요해 로컬에서 수동.
+on:
+  schedule:
+    - cron: "0 19 * * *" # 매일 04:00 KST — 놀이시설·테마파크·서울형
+    - cron: "0 17 * * 0" # 매주 일 02:00 KST — 휴게음식점 전량(6,474콜)
+  workflow_dispatch:
+    inputs:
+      full:
+        description: "휴게음식점 전량까지 다시 받기"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    env:
+      DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+      VWORLD_KEY: ${{ secrets.VWORLD_KEY }}
+      DATAGOKR_THEMEPARK_URL: https://apis.data.go.kr/1741000/amusement_facilities_other/info
+      DATAGOKR_RESTCAFE_URL: https://apis.data.go.kr/1741000/rest_cafes/info
+      DATAGOKR_PLAYGROUND_URL: https://apis.data.go.kr/1741000/pfc3/getPfctInfo3
+      ENABLE_UMPPA: "true"
+      DATABASE_URL: postgresql://unused:unused@localhost:5433/unused
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: "3.12"
+      - run: pnpm install --frozen-lockfile
+      - run: uv sync --directory apps/pipeline --frozen
+
+      # 원본은 커밋하지 않는다(수십 MB). 매 실행마다 다시 받고 GeoJSON만 남긴다.
+      - name: 놀이시설·테마파크·서울형 수집
+        run: |
+          pnpm pipeline ingest playground --dry-run --save data/raw/playground.jsonl.gz
+          pnpm pipeline ingest themepark-other --dry-run --save data/raw/themepark_other.json
+          pnpm pipeline ingest umppa --dry-run --save data/raw/umppa.json
+
+      - name: 휴게음식점 전량 (주 1회 또는 수동)
+        if: github.event.schedule == '0 17 * * 0' || inputs.full
+        run: pnpm pipeline ingest rest-cafes --dry-run --save data/raw/rest_cafes.part1.jsonl.gz
+
+      - name: 휴게음식점 캐시 복원 (평일)
+        if: github.event.schedule != '0 17 * * 0' && !inputs.full
+        uses: actions/cache/restore@v4
+        with:
+          path: data/raw/rest_cafes.part1.jsonl.gz
+          key: rest-cafes-latest
+          restore-keys: rest-cafes-
+
+      - name: 휴게음식점 캐시 저장
+        if: github.event.schedule == '0 17 * * 0' || inputs.full
+        uses: actions/cache/save@v4
+        with:
+          path: data/raw/rest_cafes.part1.jsonl.gz
+          key: rest-cafes-${{ github.run_id }}
+
+      - name: GeoJSON 생성 (프랜차이즈 추출물은 저장소의 official_attrs*.json 사용)
+        run: |
+          pnpm pipeline export geojson --out data/derived/venues.geojson
+          pnpm data:sync
+
+      - name: 변경 있으면 커밋
+        run: |
+          git config user.name "kidscafe-bot"
+          git config user.email "kidscafe-bot@users.noreply.github.com"
+          git add apps/web/public/data/venues.geojson
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git commit -m "data: 정기 갱신 $(date -u +%Y-%m-%d)"
+          git push
