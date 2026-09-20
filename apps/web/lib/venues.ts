@@ -20,6 +20,7 @@ export interface Venue {
 export interface VenueAttrs {
   source: string;
   source_label: string;
+  scope?: "store" | "brand" | null;
   observed_at: string;
   evidence_url?: string | null;
   reservation_url?: string | null;
@@ -29,6 +30,8 @@ export interface VenueAttrs {
   guardian_fee?: string | null;
   child_fee?: string | null;
   socks?: string | null;
+  play_zones?: string | null;
+  amenities?: string | null;
   capacity?: Record<string, number> | null;
   operating_days?: string | null;
   closed_days?: string | null;
@@ -67,6 +70,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   themepark: "테마파크업 신고",
   rest_cafes: "휴게음식점 인허가",
   umppa: "서울시 우리동네키움포털",
+  official: "공식 사이트",
 };
 
 // 소스마다 시도 표기가 다르다 (놀이시설: "경기", 인허가: "경기도").

@@ -88,10 +88,11 @@ export function VenueDetail({ venue: v, onBack }: Props) {
       </header>
 
       {a ? (
-        <p className="flex items-center gap-1.5 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-          <CircleCheck size={14} className="shrink-0" />
+        <p className={`flex items-start gap-1.5 rounded-lg px-3 py-2 text-xs ${a.scope === "brand" ? "bg-amber-50 text-amber-900" : "bg-emerald-50 text-emerald-800"}`}>
+          <CircleCheck size={14} className="mt-0.5 shrink-0" />
           <span>
             <strong>{a.source_label}</strong>에서 확인 · {a.observed_at}
+            {a.scope === "brand" && <span className="block text-amber-800/80">브랜드 공통 안내입니다. 이 매장의 실제 요금·연령은 다를 수 있어요.</span>}
           </span>
         </p>
       ) : (
@@ -177,10 +178,16 @@ export function VenueDetail({ venue: v, onBack }: Props) {
         <p className="mt-2 text-[11px] text-neutral-400">리뷰·사진은 외부 서비스에서 확인하세요. 이 페이지는 외부 리뷰·사진을 저장하지 않습니다.</p>
       </Section>
 
-      {a && (a.age_rules || a.notes || a.discounts || a.capacity || a.parking) && (
+      {a && (a.age_rules || a.notes || a.discounts || a.capacity || a.parking || a.child_fee || a.guardian_fee || a.play_zones || a.amenities) && (
         <Section icon={<Info size={14} />} title="자세한 안내">
           <div className="flex flex-col gap-2">
-            {a.age_rules && <Collapsible title="이용 연령·대상" text={a.age_rules} />}
+            {(a.child_fee || a.guardian_fee) && (
+              <Collapsible title="요금" text={[a.child_fee ? `아동: ${a.child_fee}` : null, a.guardian_fee ? `보호자: ${a.guardian_fee}` : null].filter(Boolean).join("\n")} />
+            )}
+            {a.age_rules ? <Collapsible title="이용 연령·대상" text={a.age_rules} /> : a.age_range && a.age_range.length > 12 && <Collapsible title="이용 연령·대상" text={a.age_range} />}
+            {(a.play_zones || a.amenities) && (
+              <Collapsible title="놀이 공간·편의" text={[a.play_zones, a.amenities].filter(Boolean).join("\n")} />
+            )}
             {(a.capacity || a.parking) && (
               <Collapsible
                 title="정원·주차"

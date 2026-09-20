@@ -23,7 +23,9 @@ id_ed25519*
 next-env.d.ts
 var/
 # 공공데이터 원본 (수십 MB, 재다운로드 가능)
-data/raw/
+data/raw/**
+!data/raw/official/
+!data/raw/official/channels.json
 # 파생 산출물 (원본에서 재생성 가능)
 data/derived/
 

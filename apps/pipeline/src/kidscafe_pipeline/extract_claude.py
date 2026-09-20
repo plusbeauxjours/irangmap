@@ -11,42 +11,48 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+_FIELDS: dict[str, Any] = {
+    "age_range": {"type": ["string", "null"]},
+    "child_fee": {"type": ["string", "null"]},
+    "guardian_fee": {"type": ["string", "null"]},
+    "socks": {"type": ["string", "null"]},
+    "play_zones": {"type": ["string", "null"]},
+    "amenities": {"type": ["string", "null"]},
+    "hours": {"type": ["string", "null"]},
+    "notes": {"type": ["string", "null"]},
+    "reservation": {"type": ["string", "null"]},
+    "phone": {"type": ["string", "null"]},
+    "address": {"type": ["string", "null"]},
+}
+_REQUIRED = list(_FIELDS)
+
 SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
-        "age_range": {"type": ["string", "null"]},
-        "child_fee": {"type": ["string", "null"]},
-        "guardian_fee": {"type": ["string", "null"]},
-        "socks": {"type": ["string", "null"]},
-        "play_zones": {"type": ["string", "null"]},
-        "amenities": {"type": ["string", "null"]},
-        "hours": {"type": ["string", "null"]},
-        "notes": {"type": ["string", "null"]},
-        "reservation": {"type": ["string", "null"]},
-        "applies_to": {
-            "type": "string",
-            "enum": ["brand", "store"],
-            "description": "브랜드 공통 안내인지 특정 매장 안내인지",
+        "brand_level": {
+            "type": "object",
+            "description": "브랜드 전 매장 공통 안내(없으면 값 전부 null)",
+            "properties": _FIELDS,
+            "required": _REQUIRED,
         },
-        "store_name": {"type": ["string", "null"]},
+        "stores": {
+            "type": "array",
+            "description": "매장별로 다른 값이 있을 때만. 매장명은 원문 그대로",
+            "items": {
+                "type": "object",
+                "properties": {"store_name": {"type": "string"}, **_FIELDS},
+                "required": ["store_name", *_REQUIRED],
+            },
+        },
+        "store_names": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "페이지에 나열된 매장명 전부(값이 없어도)",
+        },
         "evidence": {"type": "array", "items": {"type": "string"}},
         "confidence": {"type": "number", "minimum": 0, "maximum": 1},
     },
-    "required": [
-        "age_range",
-        "child_fee",
-        "guardian_fee",
-        "socks",
-        "play_zones",
-        "amenities",
-        "hours",
-        "notes",
-        "reservation",
-        "applies_to",
-        "store_name",
-        "evidence",
-        "confidence",
-    ],
+    "required": ["brand_level", "stores", "store_names", "evidence", "confidence"],
 }
 
 SYSTEM = (
@@ -56,13 +62,14 @@ SYSTEM = (
     "'아동 2시간 15,000원, 추가 30분 3,000원', '보호자 1인 무료(음료 별도)'). "
     "evidence에는 각 값의 근거가 되는 원문 구절을 그대로 넣는다. "
     "요금표가 이미지라 텍스트에 없으면 null로 두고 notes에 '요금표 이미지'라고 적는다. "
+    "브랜드 공통 안내는 brand_level에, 매장별로 다른 값은 stores[]에 매장명과 함께. "
+    "매장 목록 페이지면 store_names에 매장명을 전부 적고, "
+    "주소·전화는 stores[]에 담는다. "
     "confidence는 값들이 원문에 명시된 정도(0~1)."
 )
 
 
-def _cmd(
-    prompt: str, *, model: str, tools: list[str], add_dir: Path | None
-) -> list[str]:
+def _cmd(*, model: str, tools: list[str], add_dir: Path | None) -> list[str]:
     cmd = [
         "claude",
         "-p",
@@ -85,7 +92,8 @@ def _cmd(
         cmd += ["--allowedTools", *tools, "--max-turns", "6"]
     if add_dir:
         cmd += ["--add-dir", str(add_dir)]
-    cmd.append(prompt)
+    # 프롬프트는 stdin으로 넘긴다: `--tools`가 가변 인자라 뒤에 오는 위치 인자를 먹고,
+    # 40k자 텍스트는 argv 한도에도 걸릴 수 있다.
     return cmd
 
 
@@ -100,7 +108,7 @@ def extract(
 ) -> dict[str, Any]:
     """텍스트(+선택 이미지 파일)에서 속성을 뽑는다. 실패하면 {'error': ...}."""
     prompt = (
-        f"브랜드: {brand}\n출처 URL: {url}\n\n=== 안내문 텍스트 ===\n{text[:12000]}"
+        f"브랜드: {brand}\n출처 URL: {url}\n\n=== 안내문 텍스트 ===\n{text[:40000]}"
     )
     tools: list[str] = []
     add_dir = None
@@ -114,7 +122,8 @@ def extract(
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
     try:
         proc = subprocess.run(
-            _cmd(prompt, model=model, tools=tools, add_dir=add_dir),
+            _cmd(model=model, tools=tools, add_dir=add_dir),
+            input=prompt,
             capture_output=True,
             text=True,
             timeout=timeout_s,

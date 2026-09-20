@@ -57,7 +57,9 @@ pnpm pipeline ingest rest-cafes --dry-run --save data/raw/rest_cafes.jsonl.gz   
 pnpm pipeline ingest fire-mu --dry-run                                                 # 소방청 CSV(플래그용)
 pnpm pipeline ingest umppa --dry-run --save data/raw/umppa.json                        # 서울형 키즈카페 이용안내(ENABLE_UMPPA=true, 5초/요청, ~15분)
 pnpm pipeline report seeds                                                             # 3소스 union·매칭 tier (DB 불필요)
-pnpm pipeline export geojson --out data/derived/venues.geojson                         # 지도 MVP용 브릿지(umppa.json 있으면 지오코딩·매칭해 attrs 부착)
+pnpm pipeline ingest official --dry-run                                               # 프랜차이즈 공식 사이트(channels.json) 수집: robots·Crawl-delay 준수, 3초/호스트
+pnpm pipeline extract official --brands 바운스,뽀로로파크                                  # 저장 텍스트 → 속성 (claude -p 헤드리스, API 키 불필요)
+pnpm pipeline export geojson --out data/derived/venues.geojson                         # union + umppa attrs + official attrs → GeoJSON
 ```
 
 `.env`에 필요한 키: `DATA_GO_KR_KEY` + `DATAGOKR_THEMEPARK_URL`/`DATAGOKR_RESTCAFE_URL`/`DATAGOKR_PLAYGROUND_URL`(엔드포인트, `.env.example` 참고) · `VWORLD_KEY`(지오코딩) · `GG_DATA_KEY`(경기데이터드림, 선택). 오너가 더 준비할 것은 [docs/owner-todo.md](docs/owner-todo.md).
@@ -99,7 +101,7 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 상세 패널의 이용 연령·보호자 요금·아동 요금·양말·놀이 공간·편의·유의사항·사진은 값마다 **출처 + 확인일**을 달고 채운다.
 
 1. **서울형 키즈카페** — 서울시 우리동네키움포털(`umppa.seoul.go.kr/icare`, robots Allow) 공개 이용안내를 `ingest umppa`로 수집. `export geojson`이 주소를 VWorld로 지오코딩(`data/derived/umppa_geocode_cache.json`)해 300 m 안 이름 유사도(괄호 별칭·구/동 접미 제거, 30 m 안 공공류는 이름 무관)로 union 업소에 붙이고, 없으면 공공 업소로 추가한다(2026-09-20: 140개소 → 병합 71 · 신규 69). 사진은 저장·임베드하지 않고 서울시 원본 링크만 둔다.
-2. 프랜차이즈 공식 사이트·인스타 → LLM 추출(`ANTHROPIC_API_KEY` 필요, 요금표 이미지 20장 스파이크 후).
+2. **프랜차이즈 공식 사이트** — `data/raw/official/channels.json`(브랜드별 공식·매장목록·이용안내 URL, robots 상태, 렌더 방식)에 적힌 페이지만 `ingest official`로 받아 텍스트(+원본 HTML)로 저장하고, `extract official`이 **Claude Code 헤드리스(`claude -p --json-schema …`)**로 브랜드 공통 값(brand_level)과 매장별 값(stores[])을 뽑는다. API 키가 아니라 로그인된 Claude Code 구독을 쓴다(`extract_claude.py`: `--tools "" --strict-mcp-config --setting-sources ""`로 호출당 오버헤드 ~1.2k 토큰, 프롬프트는 stdin). `export geojson`이 브랜드 공통은 `scope=brand`(상세에 '브랜드 공통 안내' 경고), 매장명 지역 토큰이 맞으면 `scope=store`로 붙인다(`enrich_official.py`).
 3. 롱테일 → 사업자 클레임·이용자 제보.
 4. 사진 → 사업자·이용자 제공분만.
 

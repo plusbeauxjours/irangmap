@@ -19,17 +19,52 @@ import httpx
 
 UA = "kidscafe-map/0.1 (official-site fact check; contact: repo owner)"
 MIN_INTERVAL_S = 3.0
+MAX_CRAWL_DELAY_S = (
+    60.0  # robots Crawl-delay가 이보다 크면(코코몽 3600) 그 호스트는 건너뜀
+)
 
 
 def html_to_text(page: str) -> str:
+    """본문 텍스트. 제목은 `## `, 표 셀은 ` | `로 남겨 매장별 구획을 유지한다."""
     t = re.sub(r"<(script|style|noscript)[^>]*>.*?</\1>", " ", page, flags=re.S | re.I)
+    t = re.sub(r"<!--.*?-->", " ", t, flags=re.S)
+    t = re.sub(r"<h[1-6][^>]*>", "\n## ", t, flags=re.I)
+    # 표 제목이 이미지인 사이트(뽀로로파크 '일산,영등포,금천점') → alt를 제목으로
     t = re.sub(
-        r"<br\s*/?>|</(p|div|li|tr|h[1-6]|dd|dt|section|article)>", "\n", t, flags=re.I
+        r'<img[^>]+alt="([^"]{2,60})"[^>]*>',
+        lambda m: f"\n## {m.group(1)}\n" if m.group(1).strip() else " ",
+        t,
+        flags=re.I,
+    )
+    t = re.sub(r"</t[dh]>", " | ", t, flags=re.I)
+    t = re.sub(
+        r"<br\s*/?>|</(p|div|li|tr|h[1-6]|dd|dt|section|article|caption)>",
+        "\n",
+        t,
+        flags=re.I,
     )
     t = re.sub(r"<[^>]+>", " ", t)
     t = html.unescape(t)
     t = re.sub(r"[ \t\xa0]+", " ", t)
+    t = re.sub(r"( \| )+\n", "\n", t)  # 행 끝의 빈 셀 구분자 정리
     return re.sub(r"\n\s*\n+", "\n", t).strip()
+
+
+def store_links(page: str, base: str, pattern: str, cap: int = 40) -> list[str]:
+    """매장 목록 페이지에서 매장별 상세 링크(정규식 매치)를 절대 URL로 모은다."""
+    rx = re.compile(pattern)
+    b = urlparse(base)
+    out: list[str] = []
+    for m in re.finditer(r'href="([^"#]+)"', page, flags=re.I):
+        href = m.group(1)
+        path = href if href.startswith("/") else urlparse(href).path
+        if href.startswith("http") and urlparse(href).netloc != b.netloc:
+            continue
+        if rx.match(path):
+            out.append(
+                href if href.startswith("http") else f"{b.scheme}://{b.netloc}{path}"
+            )
+    return list(dict.fromkeys(out))[:cap]
 
 
 def image_urls(page: str, base: str) -> list[str]:
@@ -61,6 +96,8 @@ class OfficialFetcher:
         default_factory=dict, repr=False
     )
     _blocked: set[str] = field(default_factory=set, repr=False)
+    skipped_crawl_delay: dict[str, float] = field(default_factory=dict)
+    last_html: str = field(default="", repr=False)
 
     def __post_init__(self) -> None:
         if self.client is None:
@@ -85,7 +122,16 @@ class OfficialFetcher:
             except httpx.HTTPError:
                 self._robots[host] = None
         rp = self._robots[host]
-        return True if rp is None else rp.can_fetch("*", url)
+        if rp is None:
+            return True
+        delay = rp.crawl_delay("*")
+        if delay and delay > MAX_CRAWL_DELAY_S:
+            self._blocked.add(host)
+            self.skipped_crawl_delay[host] = delay
+            return False
+        if delay and delay > self.min_interval_s:
+            self.min_interval_s = float(delay)
+        return rp.can_fetch("*", url)
 
     def _wait(self, host: str) -> None:
         wait = self.min_interval_s - (time.monotonic() - self._last.get(host, 0.0))
@@ -115,11 +161,13 @@ class OfficialFetcher:
                 "kind": kind,
                 "error": f"http {r.status_code}",
             }
+        self.last_html = r.text
         text = html_to_text(r.text)
         slug = hashlib.sha1(url.encode()).hexdigest()[:10]
         d = self.out_dir / brand
         d.mkdir(parents=True, exist_ok=True)
         (d / f"{kind}-{slug}.txt").write_text(text, encoding="utf-8")
+        (d / f"{kind}-{slug}.html").write_text(r.text, encoding="utf-8")
         meta = {
             "brand": brand,
             "url": url,

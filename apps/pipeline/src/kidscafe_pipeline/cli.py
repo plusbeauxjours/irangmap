@@ -1,12 +1,13 @@
 import gzip
 import json
 import sys
+from datetime import date
 from pathlib import Path
 from typing import Any
 
 import typer
 
-from . import enrich_umppa, extract_claude, reports
+from . import enrich_official, enrich_umppa, extract_claude, reports
 from .config import REPO_ROOT, get_settings
 from .geocode import VWorldGeocoder
 from .sources import (
@@ -274,6 +275,22 @@ def export_geojson(
             raw.parent / "derived" / "umppa_geocode_cache.json",
         )
         umppa_stats = enrich_umppa.attach(venues, facilities, coords)
+    official_stats = None
+    results = enrich_official.load_results(
+        str(raw.parent / "derived" / "official_attrs*.json")
+    )
+    if results:
+        ch_path = raw / "official" / "channels.json"
+        generic: set[str] = set()
+        if ch_path.exists():
+            generic = {
+                r["brand"]
+                for r in json.loads(ch_path.read_text(encoding="utf-8"))
+                if r.get("brand_type") == "generic"
+            }
+        official_stats = enrich_official.attach(
+            venues, results, generic, date.today().isoformat()
+        )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(reports.to_geojson(venues), ensure_ascii=False), encoding="utf-8"
@@ -282,6 +299,7 @@ def export_geojson(
         {
             "features": len(venues),
             "umppa": umppa_stats,
+            "official": official_stats,
             "out": str(out),
             "bytes": out.stat().st_size,
         }
@@ -353,12 +371,27 @@ def ingest_official(
     dry_run: bool = typer.Option(
         False, "--dry-run", help="DB에 쓰지 않음(현재 유일 경로)"
     ),
+    from_saved: bool = typer.Option(
+        False, "--from-saved", help="재요청 없이 저장된 .html에서 .txt만 다시 생성"
+    ),
 ) -> None:
     """프랜차이즈 공식 사이트(매장 목록·이용안내)를 robots 준수·3초 간격으로 저장."""
     if not dry_run:
         raise typer.BadParameter("DB 적재는 아직 구현 전 — --dry-run만 지원합니다.")
     ch_path = _repo_path(channels) or channels
     out = _repo_path(out_dir) or out_dir
+    if from_saved:
+        want_b = {b.strip() for b in brands.split(",")} if brands else None
+        n = 0
+        for h in sorted(out.glob("*/*.html")):
+            if want_b and h.parent.name not in want_b:
+                continue
+            h.with_suffix(".txt").write_text(
+                official.html_to_text(h.read_text(encoding="utf-8")), encoding="utf-8"
+            )
+            n += 1
+        _echo({"reprocessed": n, "out_dir": str(out)})
+        return
     rows = json.loads(ch_path.read_text(encoding="utf-8"))
     want = {b.strip() for b in brands.split(",")} if brands else None
     fetcher = official.OfficialFetcher(out)
@@ -369,11 +402,19 @@ def ingest_official(
         if row.get("brand_type") == "generic":
             skipped.append(row["brand"])
             continue
-        for kind in ("official_url", "store_list_url", "info_url"):
-            url = row.get(kind)
-            if not url:
+        jobs = [
+            (kind.replace("_url", ""), row[kind])
+            for kind in ("official_url", "store_list_url", "info_url")
+            if row.get(kind)
+        ]
+        jobs += [("info", u) for u in row.get("extra_urls") or []]
+        seen_urls: set[str] = set()
+        while jobs:
+            kind, url = jobs.pop(0)
+            if url in seen_urls:
                 continue
-            meta = fetcher.fetch(row["brand"], url, kind.replace("_url", ""))
+            seen_urls.add(url)
+            meta = fetcher.fetch(row["brand"], url, kind)
             if meta is None:
                 errors.append({"brand": row["brand"], "url": url, "error": "blocked"})
             elif meta.get("error"):
@@ -384,11 +425,18 @@ def ingest_official(
                     f"saved {meta['brand']} {meta['kind']} {meta['chars']}c",
                     file=sys.stderr,
                 )
+                if kind == "store_list" and row.get("store_page_regex"):
+                    links = official.store_links(
+                        fetcher.last_html, url, row["store_page_regex"]
+                    )
+                    jobs += [("store", u) for u in links]
+                    print(f"  +{len(links)} store pages", file=sys.stderr)
     _echo(
         {
             "saved": len(saved),
             "calls": fetcher.calls,
             "generic_skipped": skipped,
+            "crawl_delay_skipped": fetcher.skipped_crawl_delay,
             "errors": errors,
             "out_dir": str(out),
             "dry_run": True,
@@ -456,7 +504,9 @@ def extract_official(
         )
         print(
             f"{meta['brand']:10s} {meta['kind']:6s} conf={data.get('confidence')} "
-            f"age={data.get('age_range')} fee={str(data.get('child_fee'))[:30]}",
+            f"stores={len(data.get('stores') or [])} "
+            f"names={len(data.get('store_names') or [])} "
+            f"brand_age={(data.get('brand_level') or {}).get('age_range')}",
             file=sys.stderr,
         )
     _echo(
