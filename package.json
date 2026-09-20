@@ -16,6 +16,7 @@
     "pipeline": "uv run --directory apps/pipeline kidscafe-pipeline",
     "lint": "pnpm lint:web && pnpm lint:pipeline",
     "test": "pnpm test:web && pnpm test:pipeline",
-    "build": "pnpm build:web"
+    "build": "pnpm build:web",
+    "data:sync": "mkdir -p apps/web/public/data && cp data/derived/venues.geojson apps/web/public/data/venues.geojson"
   }
 }

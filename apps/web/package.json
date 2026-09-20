@@ -7,9 +7,13 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "vendor": "mkdir -p public/vendor && cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs node_modules/maplibre-gl/dist/maplibre-gl-shared.mjs public/vendor/",
+    "predev": "pnpm vendor",
+    "prebuild": "pnpm vendor"
   },
   "dependencies": {
+    "maplibre-gl": "^6.10.0",
     "next": "^15.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

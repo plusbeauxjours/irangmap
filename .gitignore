@@ -29,3 +29,8 @@ data/derived/
 
 # OMC 세션 상태 (도구 로컬)
 .omc/
+
+# 웹이 읽는 파생 데이터 (pnpm data:sync로 재생성)
+apps/web/public/data/
+# maplibre 워커 (node_modules에서 pnpm vendor로 복사)
+apps/web/public/vendor/

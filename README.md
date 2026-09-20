@@ -7,7 +7,8 @@
 ## 구조
 
 ```
-apps/web        Next.js 15 App Router. route handler가 Postgres를 직접 조회한다 (별도 API 서버 없음).
+apps/web        Next.js 15 App Router. 지도 MVP: MapLibre GL + VWorld 배경지도, 좌 리스트 ↔ 우 지도(뷰포트 동기화·클러스터·필터).
+                지금은 public/data/venues.geojson(정적)을 읽고, DB가 붙으면 route handler로 바꾼다.
 apps/pipeline   Python 3.12 (uv). 공공데이터 수집·정규화·매칭·분류. alembic이 스키마의 유일한 소유자.
                 sources/  datagokr(페이징 클라이언트) · themepark_other · rest_cafes · playground · fire_mu
                 normalize(EPSG:5174→WGS84) · geocode(VWorld) · names(rapidfuzz) · resolve(격자+유사도 tier)
@@ -59,6 +60,16 @@ pnpm pipeline export geojson --out data/derived/venues.geojson                  
 ```
 
 `.env`에 필요한 키: `DATA_GO_KR_KEY` + `DATAGOKR_THEMEPARK_URL`/`DATAGOKR_RESTCAFE_URL`/`DATAGOKR_PLAYGROUND_URL`(엔드포인트, `.env.example` 참고) · `VWORLD_KEY`(지오코딩) · `GG_DATA_KEY`(경기데이터드림, 선택). 오너가 더 준비할 것은 [docs/owner-todo.md](docs/owner-todo.md).
+
+지도 MVP 실행 (DB 불필요):
+
+```bash
+pnpm data:sync                                  # data/derived/venues.geojson → apps/web/public/data/
+echo "NEXT_PUBLIC_VWORLD_KEY=<VWorld 키>" > apps/web/.env.local
+pnpm dev:web                                    # http://localhost:3000 (predev가 maplibre 워커를 public/vendor/로 복사)
+```
+
+지도 라이브러리 메모: 카카오맵 JS SDK 대신 MapLibre + VWorld 타일(무료, 키 있음)로 시작했다. 리스트·필터·동기화 로직은 지도 라이브러리와 무관하므로 카카오로 바꿔도 `components/MapView.tsx`만 갈아 끼우면 된다. maplibre-gl 6의 모듈 워커는 Next 번들러가 URL을 못 만들어 `setWorkerUrl("/vendor/maplibre-gl-worker.mjs")`로 고정한다.
 
 전체 검증:
 

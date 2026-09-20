@@ -1,5 +1,5 @@
-import { Placeholder } from "@/components/Placeholder";
+import { Explorer } from "@/components/Explorer";
 
 export default function Page() {
-  return <Placeholder />;
+  return <Explorer />;
 }
