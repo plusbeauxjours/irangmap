@@ -195,17 +195,17 @@ export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSe
   return (
     <div className="relative h-full w-full">
       <div ref={container} className="h-full w-full" role="region" aria-label="지도" />
-      <div className="pointer-events-none absolute bottom-6 left-3 flex flex-col gap-1 rounded-lg bg-white/90 px-3 py-2 text-[11px] text-neutral-700 shadow" aria-label="범례">
+      <div className="pointer-events-none absolute bottom-8 left-3 z-10 flex flex-col gap-1 rounded-lg bg-white/90 px-3 py-2 text-[11px] text-neutral-700 shadow" aria-label="범례">
         <span className="flex items-center gap-2"><i className="inline-block h-3 w-3 rounded-full border-2 border-white" style={{ background: "#e11d48" }} /> 키즈카페</span>
         <span className="flex items-center gap-2"><i className="inline-block h-3 w-3 rounded-full border-2 border-white" style={{ background: "#2563eb" }} /> 트램폴린</span>
         <span className="flex items-center gap-2"><i className="inline-block h-3 w-3 rounded-full border-2" style={{ background: "#e11d48", borderColor: "#059669" }} /> 이용 정보 확인됨</span>
         <span className="flex items-center gap-2"><i className="inline-block h-3 w-3 rounded-full text-center text-[7px] font-bold leading-3 text-white" style={{ background: "#f43f5e" }}>9</i> 묶음 · 클릭해 펼치기</span>
       </div>
       {error ? (
-        <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-lg bg-rose-600 px-3 py-2 text-xs text-white shadow">{error}</div>
+        <div className="absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-lg bg-rose-600 px-3 py-2 text-xs text-white shadow">{error}</div>
       ) : (
         !placed && (
-          <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-neutral-900/80 px-3 py-1 text-xs text-white shadow">
+          <div className="pointer-events-none absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full bg-neutral-900/80 px-3 py-1 text-xs text-white shadow">
             {ready ? "업소 위치 표시 중…" : "카카오맵 불러오는 중…"}
           </div>
         )
