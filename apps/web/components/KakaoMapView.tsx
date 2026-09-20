@@ -70,6 +70,8 @@ export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSe
   onSelectRef.current = onSelect;
   const onBoundsRef = useRef(onBoundsChange);
   onBoundsRef.current = onBoundsChange;
+  const selectedRef = useRef<Venue | null>(selected);
+  selectedRef.current = selected;
   const [ready, setReady] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +117,13 @@ export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSe
         kakao.maps.event.addListener(map, "idle", () => onBoundsRef.current(toBounds(map.getBounds())));
         kakao.maps.event.addListener(map, "click", () => popupRef.current?.setMap(null));
         onBoundsRef.current(toBounds(map.getBounds()));
+        // 지도가 뜨기 전에 이미 업소를 골랐다면(빠른 클릭·URL 진입) 그 자리로 간다
+        const pre = selectedRef.current;
+        if (pre) {
+          const pos = new kakao.maps.LatLng(pre.lat, pre.lon);
+          map.setLevel(LEVEL_DETAIL, { anchor: pos });
+          map.setCenter(pos);
+        }
         performance.mark("kc:map-load");
         setReady(true);
       })
