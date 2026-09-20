@@ -57,3 +57,57 @@ def test_attach_matches_nearby_same_name_and_adds_unmatched() -> None:
     assert a["observed_at"] == "2026-09-20" and a["source"] == "umppa"
     assert venues[0]["sources"] == ["playground:1", "umppa:DJ230901"]
     assert venues[1]["public"] is True and venues[1]["phone"] == "02-824-0614"
+
+
+def test_similarity_uses_parenthesis_alias_and_strips_seoul_pattern() -> None:
+    assert (
+        enrich_umppa.similarity(
+            "서울형 키즈카페 송파구 잠실근린공원점(하하호호놀이터)",
+            "하하호호놀이터 송파구1호점",
+        )
+        >= 0.6
+    )
+    assert (
+        enrich_umppa.similarity(
+            "서울형 키즈카페 중랑구 묵동점 (중랑실내놀이터 묵동장미마을점)",
+            "중랑실내놀이터 묵동장미마을점",
+        )
+        >= 0.8
+    )
+    assert enrich_umppa.similarity("서울형 키즈카페 동작구 사당2동점", "닥터방방") < 0.3
+
+
+def test_match_umppa_prefers_public_neighbor_within_30m() -> None:
+    venues = [
+        {
+            "name": "은평아이맘놀이터 역촌동점(서울형 키즈카페)",
+            "lon": 126.92,
+            "lat": 37.60,
+            "public": True,
+        },
+        {"name": "닥터방방", "lon": 126.9201, "lat": 37.6001, "public": False},
+    ]
+    from kidscafe_pipeline.resolve import Candidate, SpatialIndex
+
+    index = SpatialIndex(
+        Candidate("union", str(i), v["name"], v["lon"], v["lat"])
+        for i, v in enumerate(venues)
+    )
+    m = enrich_umppa.match_umppa(
+        Candidate(
+            "umppa",
+            "EP1",
+            "서울형 키즈카페 은평구 역촌동점(은평아이맘놀이터)",
+            126.92,
+            37.60,
+        ),
+        venues,
+        index,
+    )
+    assert m.tier == "strong" and m.other.key == "0"
+    far = enrich_umppa.match_umppa(
+        Candidate("umppa", "X", "서울형 키즈카페 동작구 사당2동점", 126.9201, 37.6001),
+        [venues[1]],
+        SpatialIndex([Candidate("union", "0", "닥터방방", 126.9201, 37.6001)]),
+    )
+    assert far.tier == "none"

@@ -45,6 +45,44 @@ def parse_age_range(text: str) -> tuple[int | None, int | None]:
     return (int(m.group(1)), int(m.group(2))) if m else (None, None)
 
 
+_WON = r"(\d{1,3}(?:,\d{3})+|\d{4,5})\s*원"
+
+
+def parse_fee_text(text: str | None) -> dict[str, Any]:
+    """이용료 섹션 자유 텍스트에서 아동 요금·보호자 문구를 뽑는다.
+
+    변형: '아동 1명당 5,000원(보호자 무료)', '아동 1인 5,000원 / 보호자 포함 금액',
+    '개인 이용료 아동당 5,000원', '무료'.
+    """
+    t = text or ""
+    lines = [ln.strip(" -*•·\t") for ln in t.splitlines() if ln.strip()]
+    fee: int | None = None
+    fee_line: str | None = None
+    for ln in lines:
+        m = re.search(r"(?:아동|어린이|아이|개인)[^\n]{0,20}?" + _WON, ln)
+        if m:
+            fee, fee_line = int(m.group(1).replace(",", "")), ln
+            break
+    if fee is None:
+        for ln in lines:
+            m = re.search(_WON, ln)
+            if m:
+                fee, fee_line = int(m.group(1).replace(",", "")), ln
+                break
+    if fee is None and re.search(r"무료", t):
+        fee, fee_line = 0, "무료"
+    guardian = next(
+        (ln for ln in lines if re.search(r"보호자|인솔자|성인|어른", ln)), None
+    )
+    guardian_free = bool(re.search(r"(보호자|인솔자|성인|어른)[^\n]{0,12}?무료", t))
+    return {
+        "fee_child_krw": fee,
+        "fee_child_text": fee_line[:120] if fee_line else None,
+        "guardian_text": guardian[:120] if guardian else None,
+        "guardian_free": guardian_free,
+    }
+
+
 def parse_list(page_html: str) -> list[dict[str, Any]]:
     cards = re.findall(
         r'<div class="kidscafe_wrap">(.*?)<!-- kidscafe_wrap end -->',
@@ -100,11 +138,9 @@ def _sections(view_html: str) -> dict[str, str]:
 def parse_view(view_html: str) -> dict[str, Any]:
     sec = _sections(view_html)
     flat = _clean(view_html)
-    fee_child = None
-    m = re.search(r"아동\s*1명당\s*([\d,]+)\s*원", flat)
-    if m:
-        fee_child = int(m.group(1).replace(",", ""))
-    guardian_free = bool(re.search(r"보호자\s*무료", flat))
+    fees = parse_fee_text(sec.get("이용료") or flat)
+    fee_child = fees["fee_child_krw"]
+    guardian_free = fees["guardian_free"]
     socks_required = bool(re.search(r"미끄럼\s*방지\s*양말", flat))
     oper = re.search(r"운영일\s*\n?\s*([^\n]{1,40})", flat)
     closed = re.search(r"휴관일\s*\n?\s*([^\n]{1,80})", flat)
@@ -121,6 +157,9 @@ def parse_view(view_html: str) -> dict[str, Any]:
         "operating_days": oper.group(1).strip() if oper else None,
         "closed_days": closed.group(1).strip() if closed else None,
         "hours_slots": [f"{a} {b}" for a, b in slots][:12],
+        "hours_text": sec.get("운영시간", "")[:600] or None,
+        "fee_child_text": fees["fee_child_text"],
+        "guardian_text": fees["guardian_text"],
         "parking": parking.group(1).strip()[:200] if parking else None,
         "fee_text": sec.get("이용료", "")[:1500],
         "discount_text": sec.get("입장료 할인", "")[:1500],

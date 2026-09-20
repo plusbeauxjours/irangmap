@@ -98,7 +98,7 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 
 상세 패널의 이용 연령·보호자 요금·아동 요금·양말·놀이 공간·편의·유의사항·사진은 값마다 **출처 + 확인일**을 달고 채운다.
 
-1. **서울형 키즈카페** — 서울시 우리동네키움포털(`umppa.seoul.go.kr/icare`, robots Allow) 공개 이용안내를 `ingest umppa`로 수집. `export geojson`이 주소를 VWorld로 지오코딩(`data/derived/umppa_geocode_cache.json`)해 300 m 안 이름 유사도로 union 업소에 붙이고, 없으면 공공 업소로 추가한다. 사진은 저장·임베드하지 않고 서울시 원본 링크만 둔다.
+1. **서울형 키즈카페** — 서울시 우리동네키움포털(`umppa.seoul.go.kr/icare`, robots Allow) 공개 이용안내를 `ingest umppa`로 수집. `export geojson`이 주소를 VWorld로 지오코딩(`data/derived/umppa_geocode_cache.json`)해 300 m 안 이름 유사도(괄호 별칭·구/동 접미 제거, 30 m 안 공공류는 이름 무관)로 union 업소에 붙이고, 없으면 공공 업소로 추가한다(2026-09-20: 140개소 → 병합 71 · 신규 69). 사진은 저장·임베드하지 않고 서울시 원본 링크만 둔다.
 2. 프랜차이즈 공식 사이트·인스타 → LLM 추출(`ANTHROPIC_API_KEY` 필요, 요금표 이미지 20장 스파이크 후).
 3. 롱테일 → 사업자 클레임·이용자 제보.
 4. 사진 → 사업자·이용자 제공분만.

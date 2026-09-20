@@ -68,7 +68,11 @@ export function VenueDetail({ venue: v, onBack }: Props) {
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
             {a.operating_days && (<><dt className="text-neutral-500">운영일</dt><dd>{a.operating_days}</dd></>)}
             {a.closed_days && (<><dt className="text-neutral-500">휴관일</dt><dd>{a.closed_days}</dd></>)}
-            {a.hours && a.hours.length > 0 && (<><dt className="text-neutral-500">회차</dt><dd className="flex flex-wrap gap-1">{a.hours.map((h) => <span key={h} className="rounded bg-white px-1.5 py-0.5 text-xs">{h}</span>)}</dd></>)}
+            {a.hours && a.hours.length > 0 ? (
+              <><dt className="text-neutral-500">회차</dt><dd className="flex flex-wrap gap-1">{a.hours.map((h) => <span key={h} className="rounded bg-white px-1.5 py-0.5 text-xs">{h}</span>)}</dd></>
+            ) : a.hours_text ? (
+              <><dt className="text-neutral-500">운영시간</dt><dd className="whitespace-pre-line text-xs">{a.hours_text.slice(0, 300)}</dd></>
+            ) : null}
             {a.reservation && (<><dt className="text-neutral-500">예약</dt><dd>{a.reservation}</dd></>)}
           </dl>
           <p className="mt-2 flex flex-wrap gap-3 text-xs">

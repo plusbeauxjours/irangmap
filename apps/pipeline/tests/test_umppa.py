@@ -39,3 +39,18 @@ def test_kill_switch_blocks_requests() -> None:
         assert "ENABLE_UMPPA" in str(e)
     else:
         raise AssertionError("expected RuntimeError")
+
+
+def test_parse_fee_text_variants() -> None:
+    f = umppa.parse_fee_text
+    assert f("무료")["fee_child_krw"] == 0
+    a = f("- 아동 1인 5,000원 / 보호자 포함 금액\n- 아동 1인당 2,000원 추가납부")
+    assert a["fee_child_krw"] == 5000 and a["guardian_text"].startswith(
+        "아동 1인 5,000원"
+    )
+    assert a["guardian_free"] is False
+    b = f("* 개인 이용료 아동당 5,000원\n* 단체 이용료 아동당 2,000원")
+    assert b["fee_child_krw"] == 5000
+    c = f("(개인) 아동 1명당 5,000원(보호자 무료, 최대 2인)")
+    assert c["fee_child_krw"] == 5000 and c["guardian_free"] is True
+    assert f("")["fee_child_krw"] is None

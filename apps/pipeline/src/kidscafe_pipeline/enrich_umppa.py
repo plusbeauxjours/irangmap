@@ -12,7 +12,9 @@ from pathlib import Path
 from typing import Any
 
 from .geocode import VWorldGeocoder
-from .resolve import Candidate, SpatialIndex, best_match
+from .names import name_similarity
+from .resolve import Candidate, Match, SpatialIndex, tier_of
+from .sources.umppa import parse_fee_text
 
 SOURCE = "umppa"
 SOURCE_LABEL = "서울시 우리동네키움포털"
@@ -47,10 +49,28 @@ def geocode_all(
 
 def to_attrs(f: dict[str, Any], observed: str) -> dict[str, Any]:
     d = f.get("detail") or {}
-    lo, hi = d.get("age_min", f.get("age_min")), d.get("age_max", f.get("age_max"))
-    fee = d.get("fee_child_krw")
-    fee_txt = f"아동 1명당 {fee:,}원" if fee else None
+    lo = d.get("age_min") if d.get("age_min") is not None else f.get("age_min")
+    hi = d.get("age_max") if d.get("age_max") is not None else f.get("age_max")
+    fees = parse_fee_text(d.get("fee_text"))
+    fee = (
+        fees["fee_child_krw"]
+        if fees["fee_child_krw"] is not None
+        else d.get("fee_child_krw")
+    )
+    if fee == 0:
+        fee_txt: str | None = "무료"
+    elif fees["fee_child_text"]:
+        fee_txt = fees["fee_child_text"]
+    elif fee:
+        fee_txt = f"아동 1명당 {fee:,}원"
+    else:
+        fee_txt = None
+    guardian_free = fees["guardian_free"] or bool(d.get("guardian_free"))
+    guardian_txt = "보호자 무료" if guardian_free else fees["guardian_text"]
     slots = d.get("hours_slots") or []
+    age_range = None
+    if lo is not None and hi is not None:
+        age_range = f"{lo}~{hi}세 (연나이)"
     return {
         "source": SOURCE,
         "source_label": SOURCE_LABEL,
@@ -58,22 +78,70 @@ def to_attrs(f: dict[str, Any], observed: str) -> dict[str, Any]:
         "evidence_url": d.get("view_url"),
         "reservation_url": d.get("reservation_url"),
         "photo_url": f.get("thumbnail_url"),
-        "age_range": f"{lo}~{hi}세 (연나이)"
-        if lo is not None and hi is not None
-        else None,
+        "age_range": age_range,
         "age_rules": (d.get("age_rules") or "")[:600] or None,
-        "guardian_fee": "보호자 무료" if d.get("guardian_free") else None,
+        "guardian_fee": guardian_txt,
         "child_fee": fee_txt,
+        "child_fee_krw": fee,
         "socks": ("미끄럼방지 양말 필수" if d.get("socks_required") else None),
         "capacity": f.get("capacity") or None,
         "operating_days": d.get("operating_days"),
         "closed_days": d.get("closed_days"),
         "hours": slots[:8] or None,
+        "hours_text": d.get("hours_text"),
         "parking": d.get("parking"),
         "notes": (d.get("rules_text") or "")[:800] or None,
         "discounts": (d.get("discount_text") or "")[:400] or None,
         "reservation": "온라인 예약(우리동네키움포털)",
     }
+
+
+_STRIP = re.compile(
+    r"서울형\s*키즈\s*카페|서울형|키즈\s*카페|시립|구립|\d{4}|여기저기|"
+    r"[가-힣]+구(?=\s|$)|[가-힣]+동\s*\d*호?점?|\d+호점|점\b"
+)
+_PUBLIC_HINT = re.compile(r"서울형|키즈카페|놀이터|키움|노리|실내놀이")
+
+
+def _aliases(name: str) -> list[str]:
+    """원명 + 괄호 별칭 + (서울형·구·동·호점을 뗀) 잔여어."""
+    out = [name]
+    out += [p for p in re.findall(r"\(([^)]{2,})", name)]
+    stripped = _STRIP.sub(" ", re.sub(r"\([^)]*\)?", " ", name)).strip()
+    if len(stripped) >= 2:
+        out.append(stripped)
+    return out
+
+
+def similarity(umppa_name: str, other_name: str) -> float:
+    return max(name_similarity(a, other_name) for a in _aliases(umppa_name))
+
+
+def match_umppa(
+    cand: Candidate, venues: list[dict[str, Any]], index: SpatialIndex
+) -> Match:
+    """서울형 이름 패턴(구·동·호점·괄호 별칭)을 감안한 매칭.
+
+    - 이름 유사도(별칭 포함) + 거리로 tier_of.
+    - 30 m 안의 공공 시설(또는 서울형/놀이터/키움류 이름)은 이름이 달라도 strong:
+      같은 건물의 같은 시설을 다른 이름으로 등록한 경우다.
+    - weak는 100 m 안 공공류만 인정한다.
+    """
+    best: Match = Match("none", None, None, 0.0)
+    rank_of = {"strong": 2, "weak": 1, "none": 0}
+    for other, d in index.near(cand.lon, cand.lat, 300):
+        v = venues[int(other.key)]
+        sim = similarity(cand.name, other.name)
+        public_like = bool(v.get("public") or _PUBLIC_HINT.search(other.name))
+        tier = tier_of(sim, d)
+        if tier != "strong" and d <= 30 and public_like:
+            tier = "strong"
+        if tier == "weak" and not (d <= 100 and public_like):
+            tier = "none"  # '키즈카페' 한 단어만 겹치는 먼 민간 업소는 접지 않는다
+        rank = (rank_of[tier], sim, -d)
+        if rank > (rank_of[best.tier], best.similarity, -(best.distance_m or 0)):
+            best = Match(tier, other, d, sim)
+    return best
 
 
 def attach(
@@ -101,14 +169,14 @@ def attach(
             continue
         stats["geocoded"] += 1
         lon, lat = coords[fid]
-        m = best_match(Candidate(SOURCE, fid, f["name"], lon, lat), index)
+        m = match_umppa(Candidate(SOURCE, fid, f["name"], lon, lat), venues, index)
         if m.tier in ("strong", "weak") and m.other is not None:
             v = venues[int(m.other.key)]
             stats[m.tier] += 1
             v["sources"].append(f"{SOURCE}:{fid}")
             v["public"] = True
-            v["attrs"] = attrs
-            v.setdefault("phone", f.get("phone"))
+            if "attrs" not in v:
+                v["attrs"] = attrs
             if not v.get("phone"):
                 v["phone"] = f.get("phone")
             continue

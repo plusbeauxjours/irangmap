@@ -48,7 +48,7 @@ export function FiltersBar({ filters, onChange, total, visible }: Props) {
         </button>
       </div>
       <p className="text-xs text-neutral-500">
-        지도 범위 안 <strong className="text-neutral-900">{visible.toLocaleString()}</strong>곳 · 전국 {total.toLocaleString()}곳 (공공데이터 3종 병합, 2026-09-19)
+        지도 범위 안 <strong className="text-neutral-900">{visible.toLocaleString()}</strong>곳 · 전국 {total.toLocaleString()}곳 (공공데이터 3종 + 서울형 키즈카페, 2026-09-20)
       </p>
     </div>
   );

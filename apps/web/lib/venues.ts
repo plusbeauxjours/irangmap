@@ -33,6 +33,8 @@ export interface VenueAttrs {
   operating_days?: string | null;
   closed_days?: string | null;
   hours?: string[] | null;
+  hours_text?: string | null;
+  child_fee_krw?: number | null;
   parking?: string | null;
   notes?: string | null;
   discounts?: string | null;
