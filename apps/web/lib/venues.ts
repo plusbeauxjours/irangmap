@@ -170,11 +170,28 @@ export function toFeatureCollection(venues: Venue[]) {
 }
 
 
+/** 후기 검색용 지역 힌트: 주소에서 구·시·군 두 토큰과 괄호 안 동. 지점 많은 브랜드의 다른 지점 글을 걸러준다. */
+export function regionHint(addr: string | undefined): string {
+  const a = addr ?? "";
+  const dong = a.match(/\(([가-힣0-9]+동)(?=[),\s])/)?.[1] ?? ""; // JS의 \b는 한글 뒤에서 안 걸린다
+  const parts = a.replace(/\(.*?\)/g, " ").trim().split(/\s+/);
+  const gu = parts.slice(1).filter((p) => /(구|시|군)$/.test(p) && p.length <= 6).slice(0, 2);
+  return [...gu, dong].filter(Boolean).join(" ");
+}
+
+function reviewQuery(v: Venue): string {
+  const name = v.name.replace(/\(주\)|주식회사|㈜/g, " ").replace(/\s+/g, " ").trim();
+  return `${name} ${regionHint(v.addr)} 후기`.replace(/\s+/g, " ").trim();
+}
+
 /** 외부 서비스 검색 딥링크 — 데이터 저장 없이 링크만 (카카오 place_id·네이버는 링크아웃 원칙). */
 export function linkouts(v: Venue) {
   const q = encodeURIComponent(`${v.name} ${v.sido}`.trim());
   const qAddr = encodeURIComponent(`${v.name} ${v.addr}`.trim());
+  const qReview = encodeURIComponent(reviewQuery(v));
   return [
+    { key: "naver_blog", label: "네이버 블로그 후기", href: `https://search.naver.com/search.naver?where=blog&query=${qReview}` },
+    { key: "naver_cafe", label: "네이버 카페 글", href: `https://search.naver.com/search.naver?where=article&query=${qReview}` },
     { key: "kakao", label: "카카오맵", href: `https://map.kakao.com/?q=${qAddr}` },
     { key: "naver", label: "네이버 지도", href: `https://map.naver.com/p/search/${q}` },
     { key: "google", label: "구글 검색", href: `https://www.google.com/search?q=${qAddr}` },

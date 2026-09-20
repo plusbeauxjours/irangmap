@@ -1,5 +1,5 @@
 import { firstAmount } from "./facts";
-import { ATTRIBUTE_SCHEMA, DEFAULT_FILTERS, filterVenues, inBounds, linkouts, normalizeSido, parseVenues, type Venue } from "./venues";
+import { ATTRIBUTE_SCHEMA, DEFAULT_FILTERS, filterVenues, inBounds, linkouts, normalizeSido, parseVenues, regionHint, type Venue } from "./venues";
 
 const gj = {
   features: [
@@ -31,9 +31,19 @@ test("inBounds keeps only venues inside the viewport", () => {
 
 test("linkouts build encoded search deep links for each external service", () => {
   const links = linkouts(venues[2]);
-  expect(links.map((l) => l.key)).toEqual(["kakao", "naver", "google", "instagram"]);
-  expect(links[0].href).toContain(encodeURIComponent("서울형 키즈카페 시립1호점 서울 동작구 노량진로 10"));
-  expect(links[3].href).toContain(encodeURIComponent("서울형키즈카페시립1호점"));
+  expect(links.map((l) => l.key)).toEqual(["naver_blog", "naver_cafe", "kakao", "naver", "google", "instagram"]);
+  expect(links[2].href).toContain(encodeURIComponent("서울형 키즈카페 시립1호점 서울 동작구 노량진로 10"));
+  expect(links[5].href).toContain(encodeURIComponent("서울형키즈카페시립1호점"));
+  expect(links[0].href).toBe(`https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent("서울형 키즈카페 시립1호점 동작구 후기")}`);
+  expect(links[1].href).toContain("where=article");
+});
+
+test("regionHint keeps gu/si tokens and the dong in parentheses, and strips (주)", () => {
+  expect(regionHint("경기도 수원시 영통구 덕영대로 1566, 더 판타지움 3층 (영통동)")).toBe("수원시 영통구 영통동");
+  expect(regionHint("서울 강동구 고덕비즈밸리로 51")).toBe("강동구");
+  expect(regionHint(undefined)).toBe("");
+  const v = { ...venues[1], name: "(주)바운스 세종센터", addr: "세종특별자치시 국세청로 32 (나성동)" };
+  expect(decodeURIComponent(linkouts(v)[0].href)).toContain("바운스 세종센터 나성동 후기");
 });
 
 test("attribute schema covers what parents check first", () => {
