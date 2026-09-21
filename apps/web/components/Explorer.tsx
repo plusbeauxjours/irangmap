@@ -47,7 +47,7 @@ const KakaoMapView = dynamic(() => import("./KakaoMapView").then((m) => m.KakaoM
 // 카카오 JS 키가 있으면 카카오맵(한국 사용자에게 익숙한 지도), 없으면 VWorld 래스터로 대체
 const USE_KAKAO = Boolean(process.env.NEXT_PUBLIC_KAKAO_JS_KEY);
 
-export function Explorer({ authEnabled = false, reportsEnabled = false }: { authEnabled?: boolean; reportsEnabled?: boolean }) {
+export function Explorer({ authEnabled = false, reportsEnabled = false, reviewsEnabled = false }: { authEnabled?: boolean; reportsEnabled?: boolean; reviewsEnabled?: boolean }) {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -131,7 +131,7 @@ export function Explorer({ authEnabled = false, reportsEnabled = false }: { auth
         {error && <p className="m-4 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-700">{error}</p>}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {selected ? (
-            <VenueDetail venue={selected} onBack={() => setSelectedId(null)} reportsEnabled={reportsEnabled} />
+            <VenueDetail venue={selected} onBack={() => setSelectedId(null)} reportsEnabled={reportsEnabled} reviewsEnabled={reviewsEnabled} />
           ) : venues.length === 0 && !error ? (
             <ListSkeleton />
           ) : (

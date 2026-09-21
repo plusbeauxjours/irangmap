@@ -7,12 +7,14 @@ import { CATEGORY_LABEL, SOURCE_LABEL, linkouts, type Venue } from "@/lib/venues
 import { ArrowLeft, BadgeCheck, Building2, CalendarCheck, Camera, CategoryIcon, ChevronDown, ChevronUp, CircleCheck, CircleHelp, Clock, ExternalLink, Home, Info, MapPin, Phone } from "./icons";
 import { QuickFacts } from "./QuickFacts";
 import { ReportDialog } from "./ReportDialog";
+import { ReviewPreview } from "./ReviewPreview";
 import { RichText } from "./RichText";
 
 interface Props {
   venue: Venue;
   onBack: () => void;
   reportsEnabled?: boolean;
+  reviewsEnabled?: boolean;
 }
 
 function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
@@ -57,7 +59,7 @@ function Collapsible({ title, text }: { title: string; text: string }) {
 const btn = "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 const btnFocusNeutral = "focus-visible:ring-neutral-400";
 
-export function VenueDetail({ venue: v, onBack, reportsEnabled = false }: Props) {
+export function VenueDetail({ venue: v, onBack, reportsEnabled = false, reviewsEnabled = false }: Props) {
   const a = v.attrs;
   const [allSlots, setAllSlots] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -207,6 +209,13 @@ export function VenueDetail({ venue: v, onBack, reportsEnabled = false }: Props)
         </div>
         <p className="mt-2 text-[11px] text-neutral-400">리뷰·사진은 외부 서비스에서 확인하세요. 이 페이지는 외부 리뷰·사진을 저장하지 않습니다.</p>
       </Section>
+
+      {reviewsEnabled && (
+        <Section icon={<ExternalLink size={14} />} title="후기 미리보기">
+          <ReviewPreview venue={v} />
+          <p className="mt-2 text-[11px] text-neutral-400">카카오(다음) 검색 결과의 제목·링크만 보여줍니다. 내용은 각 글 작성자의 것이며 저장하지 않습니다.</p>
+        </Section>
+      )}
 
       {a && (a.age_rules || a.notes || a.discounts || a.capacity || a.parking || a.child_fee || a.guardian_fee || a.play_zones || a.amenities) && (
         <Section icon={<Info size={14} />} title="자세한 안내">

@@ -180,11 +180,11 @@ export function regionHint(addr: string | undefined): string {
 }
 
 /** 검색어용 상호: 법인 표기((주)·㈜·주식회사)는 어느 서비스 검색에도 도움이 안 된다. */
-function searchName(name: string): string {
+export function searchName(name: string): string {
   return name.replace(/\(주\)|주식회사|㈜/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function reviewQuery(v: Venue): string {
+export function reviewQuery(v: Venue): string {
   return `${searchName(v.name)} ${regionHint(v.addr)} 후기`.replace(/\s+/g, " ").trim();
 }
 
