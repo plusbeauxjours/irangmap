@@ -57,6 +57,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: uv sync --directory apps/pipeline --frozen
 
+      # GitHub 러너(미국)에서 한국 공공 API가 닿는지 먼저 확인 — 첫 실행이 ConnectTimeout으로 실패했다
+      - name: 연결 확인 (data.go.kr · 서울시 · VWorld)
+        continue-on-error: true
+        run: |
+          for h in "https://apis.data.go.kr/1741000/pfc3/getPfctInfo3?serviceKey=x" "https://umppa.seoul.go.kr/icare/user/kidsCafe/BD_selectKidsCafeList.do" "https://api.vworld.kr/req/address"; do
+            curl -s -m 20 -o /dev/null -w "%{http_code} connect=%{time_connect}s total=%{time_total}s $h\n" "$h" || echo "FAIL $h"
+          done
+
       # 원본은 커밋하지 않는다(수십 MB). 매 실행마다 다시 받고 GeoJSON만 남긴다.
       - name: 놀이시설·테마파크·서울형 수집
         run: |
