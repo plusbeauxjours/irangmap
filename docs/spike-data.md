@@ -164,3 +164,9 @@
 - SDK 로드 진단: 스크립트 `onerror` + 네트워크 `net::ERR_BLOCKED_BY_ORB`. curl에 `Referer: http://localhost:3000/`을 붙이면 401 `{"errorType":"AccessDeniedError","message":"domain mismatched! caller=http://localhost:3000 ..."}` → 콘솔에 Web 도메인 미등록. Referer 없이는 200 text/javascript(부트스트랩 4KB)라 curl만으로는 못 잡는다.
 - 구현: `KakaoMapView.tsx` — 카카오 공식 타입이 없어 `types/kakao.d.ts`에 쓰는 API만 선언. 마커는 SVG data URI `MarkerImage` 4종(카테고리×확인), 클러스터는 `MarkerClusterer(minLevel 5, calculator [10,50,200])`, 팝업·hover 링은 `CustomOverlay`. 키가 없으면 Explorer가 VWorld 지도로 자동 대체.
 - **도메인 등록 후 결과(17:33)**: 카카오맵 정상. 사파리 실측(`/?perf=1`): geojson 169 ms → 지도 생성 249 ms → SDK 로드 688 ms → **마커 2,911개 배치 1,058 ms**. 자동화 크롬(MCP)은 같은 단계가 22.8초로 나와 여전히 측정 왜곡(이전 MapLibre 때와 동일한 패턴 — 실측은 항상 실제 브라우저로). 마커 객체는 업소 id별 캐시로 바꿔 필터 토글 시 재생성하지 않음. 클릭 검증: 합성 이벤트(dispatchEvent)로는 카카오 마커 클릭이 안 잡히고, 실제 클릭(지도 중앙 = panTo된 마커)으로 팝업·상세 열기 확인.
+
+## 2026-09-21 — 첫 배포 (Vercel) 메모
+
+- `vercel link --yes --project irangmap`을 `apps/web`에서 실행하면 프로젝트 Root Directory는 `.`(업로드 루트 = apps/web)로 잡힌다. CLI 배포는 apps/web만 올라가므로 워크스페이스 락파일 없이 `pnpm install`이 돈다 — 첫 배포는 이걸로 통과. Git 연동 빌드로 바꾸면 Root Directory를 `apps/web`으로 지정해야 한다.
+- `vercel env add`는 비대화식에서 `--value … --no-sensitive --yes`가 필요하고, `NEXT_PUBLIC_*`는 공개 노출 동의(config 타입)를 명시해야 등록된다.
+- 배포 URL: 프로젝트 별칭 `irangmap.vercel.app`은 200, 배포 고유 URL·팀 URL은 302(배포 보호). 카카오 콘솔 Web 도메인에 `https://irangmap.vercel.app` 추가 전에는 지도 자리에 오류 배너.
