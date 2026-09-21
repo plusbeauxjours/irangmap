@@ -167,6 +167,6 @@
 
 ## 2026-09-21 — 첫 배포 (Vercel) 메모
 
-- `vercel link --yes --project irangmap`을 `apps/web`에서 실행하면 프로젝트 Root Directory는 `.`(업로드 루트 = apps/web)로 잡힌다. CLI 배포는 apps/web만 올라가므로 워크스페이스 락파일 없이 `pnpm install`이 돈다 — 첫 배포는 이걸로 통과. Git 연동 빌드로 바꾸면 Root Directory를 `apps/web`으로 지정해야 한다.
+- `vercel link --yes --project irangmap`을 `apps/web`에서 실행하면 프로젝트 Root Directory는 `.`(업로드 루트 = apps/web)로 잡힌다. CLI 배포는 apps/web만 올라가므로 워크스페이스 락파일 없이 `pnpm install`이 돈다 — 첫 배포는 이걸로 통과. Git 연동 첫 빌드는 Root Directory `.` 때문에 `No Next.js version detected`로 실패 → `vercel project update irangmap --root-directory apps/web --yes`로 고치고 `vercel redeploy <실패 URL>`로 재빌드해 성공(Ready 1분).
 - `vercel env add`는 비대화식에서 `--value … --no-sensitive --yes`가 필요하고, `NEXT_PUBLIC_*`는 공개 노출 동의(config 타입)를 명시해야 등록된다.
 - 배포 URL: 프로젝트 별칭 `irangmap.vercel.app`은 200, 배포 고유 URL·팀 URL은 302(배포 보호). 카카오 콘솔 Web 도메인에 `https://irangmap.vercel.app` 추가 전에는 지도 자리에 오류 배너.

@@ -127,7 +127,7 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 
 ## 배포 (Vercel) 와 정기 갱신
 
-- **운영 URL: https://irangmap.vercel.app** (Vercel 프로젝트 `irangmap`, 팀 minjae-lees-projects, 계정 plusbeauxjours). 첫 배포 2026-09-21 09:04 KST, CLI `vercel deploy --prod`로 `apps/web`에서 직접 업로드. GitHub `plusbeauxjours/irangmap`을 연결(`vercel git connect`)하고 대시보드에서 Root Directory를 `apps/web`으로 바꾸면 푸시마다 자동 배포된다.
+- **운영 URL: https://irangmap.vercel.app** (Vercel 프로젝트 `irangmap`, 팀 minjae-lees-projects, 계정 plusbeauxjours). 첫 배포 2026-09-21 09:04 KST, CLI `vercel deploy --prod`로 `apps/web`에서 직접 업로드. GitHub `plusbeauxjours/irangmap`이 연결돼 있고 Root Directory는 `apps/web`(`vercel project update irangmap --root-directory apps/web --yes`)이라 `main` 푸시마다 자동 배포된다. 정기 갱신 워크플로의 데이터 커밋도 같은 경로로 재배포된다.
 
 - 웹은 정적 GeoJSON(`apps/web/public/data/venues.geojson`, 커밋 대상)만 읽으므로 DB 없이 Vercel에 바로 올라간다. Vercel 프로젝트 설정: **Root Directory = `apps/web`**, Framework = Next.js, 환경변수 `NEXT_PUBLIC_KAKAO_JS_KEY`, `NEXT_PUBLIC_VWORLD_KEY`. `prebuild`가 MapLibre 워커를 복사하므로 별도 빌드 명령은 필요 없다.
 - 배포 후 카카오 개발자 콘솔 → 앱 → 플랫폼 키 → Web 도메인에 `https://<프로젝트>.vercel.app`(과 커스텀 도메인)을 추가해야 지도가 뜬다. VWorld 대체 지도도 키에 도메인이 묶여 있으면 같은 처리.
