@@ -22,6 +22,7 @@ export {
   ExternalLink,
   Home,
   Info,
+  LogOut,
   MapPin,
   Phone,
   Search,

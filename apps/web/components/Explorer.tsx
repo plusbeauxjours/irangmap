@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DEFAULT_FILTERS, filterVenues, inBounds, parseVenues, type Bounds, type Filters, type Venue } from "@/lib/venues";
 
+import { AuthButton } from "./AuthButton";
 import { FiltersBar } from "./Filters";
 import { Blocks } from "./icons";
 import { VenueDetail } from "./VenueDetail";
@@ -45,7 +46,7 @@ const KakaoMapView = dynamic(() => import("./KakaoMapView").then((m) => m.KakaoM
 // 카카오 JS 키가 있으면 카카오맵(한국 사용자에게 익숙한 지도), 없으면 VWorld 래스터로 대체
 const USE_KAKAO = Boolean(process.env.NEXT_PUBLIC_KAKAO_JS_KEY);
 
-export function Explorer() {
+export function Explorer({ authEnabled = false }: { authEnabled?: boolean }) {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -110,6 +111,11 @@ export function Explorer() {
               <Blocks size={17} />
             </span>
             <h1 className="text-lg font-bold tracking-tight text-neutral-900">아이랑맵</h1>
+            {authEnabled && (
+              <div className="ml-auto">
+                <AuthButton />
+              </div>
+            )}
           </div>
           <p className="hidden pl-10 text-xs leading-snug text-neutral-500 md:block">전국 키즈카페 지도 — 출처와 확인일이 붙은 정보로 고르기</p>
         </header>

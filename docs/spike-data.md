@@ -170,3 +170,9 @@
 - `vercel link --yes --project irangmap`을 `apps/web`에서 실행하면 프로젝트 Root Directory는 `.`(업로드 루트 = apps/web)로 잡힌다. CLI 배포는 apps/web만 올라가므로 워크스페이스 락파일 없이 `pnpm install`이 돈다 — 첫 배포는 이걸로 통과. Git 연동 첫 빌드는 Root Directory `.` 때문에 `No Next.js version detected`로 실패 → `vercel project update irangmap --root-directory apps/web --yes`로 고치고 `vercel redeploy <실패 URL>`로 재빌드해 성공(Ready 1분).
 - `vercel env add`는 비대화식에서 `--value … --no-sensitive --yes`가 필요하고, `NEXT_PUBLIC_*`는 공개 노출 동의(config 타입)를 명시해야 등록된다.
 - 배포 URL: 프로젝트 별칭 `irangmap.vercel.app`은 200, 배포 고유 URL·팀 URL은 302(배포 보호). 카카오 콘솔 Web 도메인에 `https://irangmap.vercel.app` 추가 전에는 지도 자리에 오류 배너.
+
+## 2026-09-21 — LLM 백엔드를 Azure(job-crawler 리소스)로, 카카오 로그인 뼈대
+
+- 사용자 요청으로 추출 백엔드를 job-crawler와 같은 Azure AI Foundry 리소스로 교체. job-crawler 방식 그대로: v1 surface + 일반 OpenAI 클라이언트, `model`=배포명(`modulabs-gpt-5.5`), Responses API `text.format=json_schema(strict)`, `reasoning.effort=low`. strict 모드 규칙(모든 속성 required, additionalProperties=false)을 `strict_schema()`로 맞춤. 스모크: 6줄 안내문 → 전 필드 정확, 입력 851/출력 244 토큰, 즉시 응답. `claude -p` 경로는 `--backend claude`로 유지.
+- 카카오 로그인: Auth.js v5(next-auth@beta) + Kakao 프로바이더, JWT 세션. 키가 없으면 버튼 자체가 렌더되지 않아 운영에 영향 없음. 카카오 콘솔 설정(로그인 ON, Redirect URI, Client Secret)은 사용자 몫.
+- UI: 필터 태그 나열 → 아이콘 팝오버(적용 수 배지, 제거 칩), 긴 안내문 `RichText`(쉼표 요금 항목 줄 분리, 금액·라벨 굵게), 인스타그램 검색 링크 제거.

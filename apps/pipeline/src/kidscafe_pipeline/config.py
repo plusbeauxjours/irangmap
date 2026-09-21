@@ -34,6 +34,13 @@ class Settings(BaseSettings):
     naver_aux_level: int = 1
     enable_umppa_snapshot: bool = False
     enable_umppa: bool = False  # 서울형 키즈카페 정보 크롤(robots Allow)
+    # LLM 추출 백엔드 — job-crawler와 같은 Azure AI Foundry 리소스.
+    # 키가 없으면 claude -p 헤드리스로 대체.
+    llm_backend: str = "azure"
+    azure_openai_api_key: str | None = None
+    azure_openai_resource: str | None = None
+    azure_openai_base_url: str | None = None
+    azure_openai_deployment: str = "modulabs-gpt-5.5"
 
 
 @lru_cache

@@ -13,6 +13,7 @@ dependencies = [
     "httpx>=0.28.0,<1.0.0",
     "pyproj>=3.8.0",
     "rapidfuzz>=3.14.6",
+    "openai>=3.16.2",
 ]
 
 [project.scripts]

@@ -101,7 +101,7 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 상세 패널의 이용 연령·보호자 요금·아동 요금·양말·놀이 공간·편의·유의사항·사진은 값마다 **출처 + 확인일**을 달고 채운다.
 
 1. **서울형 키즈카페** — 서울시 우리동네키움포털(`umppa.seoul.go.kr/icare`, robots Allow) 공개 이용안내를 `ingest umppa`로 수집. `export geojson`이 주소를 VWorld로 지오코딩(`data/derived/umppa_geocode_cache.json`)해 300 m 안 이름 유사도(괄호 별칭·구/동 접미 제거, 30 m 안 공공류는 이름 무관)로 union 업소에 붙이고, 없으면 공공 업소로 추가한다(2026-09-20: 140개소 → 병합 71 · 신규 69). 사진은 저장·임베드하지 않고 서울시 원본 링크만 둔다.
-2. **프랜차이즈 공식 사이트** — `data/raw/official/channels.json`(브랜드별 공식·매장목록·이용안내 URL, robots 상태, 렌더 방식)에 적힌 페이지만 `ingest official`로 받아 텍스트(+원본 HTML)로 저장하고, `extract official`이 **Claude Code 헤드리스(`claude -p --json-schema …`)**로 브랜드 공통 값(brand_level)과 매장별 값(stores[])을 뽑는다. API 키가 아니라 로그인된 Claude Code 구독을 쓴다(`extract_claude.py`: `--tools "" --strict-mcp-config --setting-sources ""`로 호출당 오버헤드 ~1.2k 토큰, 프롬프트는 stdin). `export geojson`이 브랜드 공통은 `scope=brand`(상세에 '브랜드 공통 안내' 경고), 매장명 지역 토큰이 맞으면 `scope=store`로 붙인다(`enrich_official.py`). 2026-09-20: 바운스 37·뽀로로파크 8곳 부착, 목록만 있는 브랜드는 전화만 보충(30곳).
+2. **프랜차이즈 공식 사이트** — `data/raw/official/channels.json`(브랜드별 공식·매장목록·이용안내 URL, robots 상태, 렌더 방식)에 적힌 페이지만 `ingest official`로 받아 텍스트(+원본 HTML)로 저장하고, `extract official`이 브랜드 공통 값(brand_level)과 매장별 값(stores[])을 뽑는다. **기본 백엔드는 job-crawler와 같은 Azure AI Foundry 리소스**(`llm_azure.py`: `.env`의 `AZURE_OPENAI_API_KEY`·`AZURE_OPENAI_RESOURCE`, v1 surface `https://{resource}.services.ai.azure.com/openai/v1`, `model`=배포명 `modulabs-gpt-5.5`, Responses API + strict json_schema). `--backend claude`면 Claude Code 헤드리스(`extract_claude.py`)로 대체. `export geojson`이 브랜드 공통은 `scope=brand`(상세에 '브랜드 공통 안내' 경고), 매장명 지역 토큰이 맞으면 `scope=store`로 붙인다(`enrich_official.py`). 2026-09-20: 바운스 37·뽀로로파크 8곳 부착, 목록만 있는 브랜드는 전화만 보충(30곳).
 3. 롱테일 → 사업자 클레임·이용자 제보.
 4. 사진 → 사업자·이용자 제공분만.
 
@@ -135,3 +135,9 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 - 배포 후 카카오 개발자 콘솔 → 앱 → 플랫폼 키 → Web 도메인에 `https://<프로젝트>.vercel.app`(과 커스텀 도메인)을 추가해야 지도가 뜬다. VWorld 대체 지도도 키에 도메인이 묶여 있으면 같은 처리.
 - `.github/workflows/refresh-data.yml`: 매일 04:00 KST 놀이시설·테마파크·서울형 수집 → GeoJSON 재생성 → 변경 시 커밋(→ Vercel 자동 재배포). 휴게음식점 전량은 매주 일요일. 저장소 시크릿 `DATA_GO_KR_KEY`, `VWORLD_KEY` 필요. 프랜차이즈 추출(`claude -p`)은 로그인 세션이 필요해 로컬에서 수동으로 돌리고 `data/derived/official_attrs*.json`을 커밋한다.
 - 공개용 정적 페이지(`apps/web/app/(info)/`): `/about` 소개·데이터 출처·고지, `/terms` 이용약관 초안, `/privacy` 개인정보처리방침(현재 수집 개인정보 없음, 외부 서비스 전송 고지). `/robots.txt`·`/sitemap.xml`은 `app/robots.ts`·`app/sitemap.ts`. 패널 하단 푸터에서 링크. 문의 메일 plusbeauxjours@gmail.com. 약관·방침은 초안이라 공개 전 법률 검토 권장.
+
+## 카카오 로그인 (Auth.js v5)
+
+`apps/web/auth.ts` — Kakao 프로바이더, JWT 세션(DB 없음). env가 있을 때만 켜진다(`authEnabled`): `AUTH_SECRET`(`openssl rand -base64 32`), `AUTH_KAKAO_ID`(카카오 **REST API 키**), `AUTH_KAKAO_SECRET`(카카오 로그인 → 보안 → Client Secret). 로컬은 `apps/web/.env.local`, 운영은 Vercel 환경변수(sensitive). 라우트 `/api/auth/[...nextauth]`, 헤더 우측 `AuthButton`.
+
+카카오 콘솔(앱 "키즈카페" ID 1583385) 설정: 제품 설정 → 카카오 로그인 **ON** → Redirect URI에 `http://localhost:3000/api/auth/callback/kakao`와 `https://irangmap.vercel.app/api/auth/callback/kakao` → 동의항목에서 닉네임·프로필 사진을 필수 동의로(이메일은 비즈 앱 전환이 필요해 지금은 받지 않음) → 보안에서 Client Secret 생성·활성화. 제보·사업자 확인이 붙을 때 DB 어댑터와 사용자 테이블을 더한다.

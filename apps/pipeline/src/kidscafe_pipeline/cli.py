@@ -7,7 +7,7 @@ from typing import Any
 
 import typer
 
-from . import enrich_official, enrich_umppa, extract_claude, reports
+from . import enrich_official, enrich_umppa, extract_claude, llm_azure, reports
 from .config import REPO_ROOT, get_settings
 from .geocode import VWorldGeocoder
 from .sources import (
@@ -462,8 +462,27 @@ def extract_official(
     brands: str | None = typer.Option(None, help="쉼표로 브랜드 제한"),
     limit: int | None = typer.Option(None, help="처리할 페이지 수 상한(스파이크용)"),
     redo: bool = typer.Option(False, "--redo", help="이미 추출된 페이지도 다시"),
+    backend: str | None = typer.Option(
+        None, help="azure(기본, .env의 Azure 설정) 또는 claude(claude -p 헤드리스)"
+    ),
 ) -> None:
-    """저장 텍스트를 Claude Code 헤드리스로 읽어 속성을 뽑는다(증분, 재시작 안전)."""
+    """저장 텍스트에서 속성을 뽑는다(증분, 재시작 안전).
+
+    백엔드: Azure(기본) 또는 claude -p 헤드리스.
+    """
+    settings = get_settings()
+    backend = backend or settings.llm_backend
+    azure_client = None
+    if backend == "azure":
+        if not settings.azure_openai_api_key:
+            raise typer.BadParameter(
+                "AZURE_OPENAI_API_KEY가 없습니다 (.env). --backend claude로 대체 가능"
+            )
+        azure_client = llm_azure.make_client(
+            settings.azure_openai_api_key,
+            settings.azure_openai_resource,
+            settings.azure_openai_base_url,
+        )
     src = _repo_path(in_dir) or in_dir
     out = _repo_path(out) or out
     results: dict[str, Any] = {}
@@ -490,9 +509,18 @@ def extract_official(
                 "url": meta["url"],
             }
             continue
-        data = extract_claude.extract(
-            text, brand=meta["brand"], url=meta["url"], model=model
-        )
+        if azure_client is not None:
+            data = llm_azure.extract(
+                azure_client,
+                text,
+                brand=meta["brand"],
+                url=meta["url"],
+                deployment=settings.azure_openai_deployment,
+            )
+        else:
+            data = extract_claude.extract(
+                text, brand=meta["brand"], url=meta["url"], model=model
+            )
         data.update({"brand": meta["brand"], "url": meta["url"], "kind": meta["kind"]})
         data["observed_at"] = meta["fetched_at"][:10]
         results[key] = data
