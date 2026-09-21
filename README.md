@@ -133,7 +133,7 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 
 - 웹은 정적 GeoJSON(`apps/web/public/data/venues.geojson`, 커밋 대상)만 읽으므로 DB 없이 Vercel에 바로 올라간다. Vercel 프로젝트 설정: **Root Directory = `apps/web`**, Framework = Next.js, 환경변수 `NEXT_PUBLIC_KAKAO_JS_KEY`, `NEXT_PUBLIC_VWORLD_KEY`. `prebuild`가 MapLibre 워커를 복사하므로 별도 빌드 명령은 필요 없다.
 - 배포 후 카카오 개발자 콘솔 → 앱 → 플랫폼 키 → Web 도메인에 `https://<프로젝트>.vercel.app`(과 커스텀 도메인)을 추가해야 지도가 뜬다. VWorld 대체 지도도 키에 도메인이 묶여 있으면 같은 처리.
-- `.github/workflows/refresh-data.yml`: 매일 04:00 KST 놀이시설·테마파크·서울형 수집 → GeoJSON 재생성 → 변경 시 커밋(→ Vercel 자동 재배포). 휴게음식점 전량은 매주 일요일. 저장소 시크릿 `DATA_GO_KR_KEY`, `VWORLD_KEY` 필요. 프랜차이즈 추출(`claude -p`)은 로그인 세션이 필요해 로컬에서 수동으로 돌리고 `data/derived/official_attrs*.json`을 커밋한다.
+- `.github/workflows/refresh-data.yml`: 매일 04:00 KST 놀이시설·테마파크·서울형 수집 → GeoJSON 재생성 → 변경 시 커밋(→ Vercel 자동 재배포). 휴게음식점 전량은 매주 일요일, **프랜차이즈 공식 사이트 재수집 + Azure 재추출은 매월 1일**(수동 실행은 Actions → Refresh data → Run workflow에서 `franchise` 체크). 저장소 시크릿 `DATA_GO_KR_KEY`, `VWORLD_KEY`, `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_RESOURCE`.
 - 공개용 정적 페이지(`apps/web/app/(info)/`): `/about` 소개·데이터 출처·고지, `/terms` 이용약관 초안, `/privacy` 개인정보처리방침(현재 수집 개인정보 없음, 외부 서비스 전송 고지). `/robots.txt`·`/sitemap.xml`은 `app/robots.ts`·`app/sitemap.ts`. 패널 하단 푸터에서 링크. 문의 메일 plusbeauxjours@gmail.com. 약관·방침은 초안이라 공개 전 법률 검토 권장.
 
 ## 카카오 로그인 (Auth.js v5)

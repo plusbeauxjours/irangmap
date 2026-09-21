@@ -6,10 +6,15 @@ on:
   schedule:
     - cron: "0 19 * * *" # 매일 04:00 KST — 놀이시설·테마파크·서울형
     - cron: "0 17 * * 0" # 매주 일 02:00 KST — 휴게음식점 전량(6,474콜)
+    - cron: "0 18 1 * *" # 매월 1일 03:00 KST — 프랜차이즈 공식 사이트 재수집·Azure 재추출
   workflow_dispatch:
     inputs:
       full:
         description: "휴게음식점 전량까지 다시 받기"
+        type: boolean
+        default: false
+      franchise:
+        description: "프랜차이즈 공식 사이트 재수집 + Azure 재추출"
         type: boolean
         default: false
 
@@ -32,6 +37,10 @@ jobs:
       DATAGOKR_PLAYGROUND_URL: https://apis.data.go.kr/1741000/pfc3/getPfctInfo3
       ENABLE_UMPPA: "true"
       DATABASE_URL: postgresql://unused:unused@localhost:5433/unused
+      LLM_BACKEND: azure
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_RESOURCE: ${{ secrets.AZURE_OPENAI_RESOURCE }}
+      AZURE_OPENAI_DEPLOYMENT: modulabs-gpt-5.5
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -74,6 +83,12 @@ jobs:
           path: data/raw/rest_cafes.part1.jsonl.gz
           key: rest-cafes-${{ github.run_id }}
 
+      - name: 프랜차이즈 공식 사이트 재수집 + Azure 재추출 (월 1회 또는 수동)
+        if: github.event.schedule == '0 18 1 * *' || inputs.franchise
+        run: |
+          pnpm pipeline ingest official --dry-run --brands "뽀로로파크,바운스,타요키즈,쁘띠몽드,점핑몬스터,챔피언,큐리키즈,헬로방방,꼬마대통령"
+          pnpm pipeline extract official --backend azure --redo --out data/derived/official_attrs_azure.json
+
       - name: GeoJSON 생성 (프랜차이즈 추출물은 저장소의 official_attrs*.json 사용)
         run: |
           pnpm pipeline export geojson --out data/derived/venues.geojson
@@ -83,7 +98,7 @@ jobs:
         run: |
           git config user.name "kidscafe-bot"
           git config user.email "kidscafe-bot@users.noreply.github.com"
-          git add apps/web/public/data/venues.geojson
+          git add apps/web/public/data/venues.geojson data/derived/official_attrs_azure.json data/derived/umppa_geocode_cache.json
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
           git commit -m "data: 정기 갱신 $(date -u +%Y-%m-%d)"
           git push
