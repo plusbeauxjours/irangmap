@@ -141,3 +141,10 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 `apps/web/auth.ts` — Kakao 프로바이더, JWT 세션(DB 없음). env가 있을 때만 켜진다(`authEnabled`): `AUTH_SECRET`(`openssl rand -base64 32`), `AUTH_KAKAO_ID`(카카오 **REST API 키**), `AUTH_KAKAO_SECRET`(카카오 로그인 → 보안 → Client Secret). 로컬은 `apps/web/.env.local`, 운영은 Vercel 환경변수(sensitive). 라우트 `/api/auth/[...nextauth]`, 헤더 우측 `AuthButton`.
 
 카카오 콘솔(앱 "키즈카페" ID 1583385) 설정: 제품 설정 → 카카오 로그인 **ON** → Redirect URI에 `http://localhost:3000/api/auth/callback/kakao`와 `https://irangmap.vercel.app/api/auth/callback/kakao` → 동의항목에서 닉네임·프로필 사진을 필수 동의로(이메일은 비즈 앱 전환이 필요해 지금은 받지 않음) → 보안에서 Client Secret 생성·활성화. 제보·사업자 확인이 붙을 때 DB 어댑터와 사용자 테이블을 더한다.
+
+## 제보·사업자 확인 (Neon Postgres + Drizzle)
+
+- DB: Neon(`DATABASE_URL`, 로컬 `apps/web/.env.local`·Vercel sensitive). 웹이 소유하는 테이블은 `app_` 접두어(`apps/web/lib/schema.ts`): `app_users`(카카오 회원번호), `app_reports`(정보 제보·폐업·오류, pending→approved/rejected), `app_claims`(사업자 확인 요청), `app_venue_overrides`(승인된 값, 사이트가 읽는 유일한 표). 스키마 반영: `pnpm --filter @kidscafe/web db:push`(drizzle-kit, `app_*`만 대상이라 파이프라인 alembic 테이블과 충돌 없음).
+- 업소 식별자 `venueKey` = GeoJSON `sources[0]`(예: `playground:1008196`). 재내보내기 때 바뀌는 순번 id는 쓰지 않는다.
+- 흐름: 상세의 "정보 제보 · 사업자 확인" → 로그인(카카오) → `POST /api/reports`(하루 20건 제한) 또는 `POST /api/claims` → `/admin`(role=admin인 사용자만)에서 승인/거절 → 승인된 제보는 `app_venue_overrides`에 합쳐지고, 사업자 확인이 승인된 사용자의 제보는 `owner` 출처. 지도는 로드 시 `GET /api/overrides`(60초 캐시)를 받아 `applyOverrides()`로 덮어쓴다(폐업 확인은 목록에서 제외). 우선순위: 사업자 확인 > 이용자 제보(검토 완료) > 공식 사이트·공공 출처.
+- 관리자 지정: 한 번 로그인한 뒤 `update app_users set role='admin' where id='<카카오 회원번호>'`(`/api/me`로 확인).

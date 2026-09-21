@@ -6,11 +6,13 @@ import { CATEGORY_LABEL, SOURCE_LABEL, linkouts, type Venue } from "@/lib/venues
 
 import { ArrowLeft, BadgeCheck, Building2, CalendarCheck, Camera, CategoryIcon, ChevronDown, ChevronUp, CircleCheck, CircleHelp, Clock, ExternalLink, Home, Info, MapPin, Phone } from "./icons";
 import { QuickFacts } from "./QuickFacts";
+import { ReportDialog } from "./ReportDialog";
 import { RichText } from "./RichText";
 
 interface Props {
   venue: Venue;
   onBack: () => void;
+  reportsEnabled?: boolean;
 }
 
 function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
@@ -55,9 +57,10 @@ function Collapsible({ title, text }: { title: string; text: string }) {
 const btn = "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2";
 const btnFocusNeutral = "focus-visible:ring-neutral-400";
 
-export function VenueDetail({ venue: v, onBack }: Props) {
+export function VenueDetail({ venue: v, onBack, reportsEnabled = false }: Props) {
   const a = v.attrs;
   const [allSlots, setAllSlots] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const slots = a?.hours ?? [];
   const shownSlots = allSlots ? slots : slots.slice(0, 4);
 
@@ -241,9 +244,16 @@ export function VenueDetail({ venue: v, onBack }: Props) {
         </ul>
       </Section>
 
-      <button type="button" disabled className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-sm text-neutral-400" title="준비 중">
-        <Info size={14} /> 정보 제보 · 사업자 확인 (준비 중)
-      </button>
+      {reportsEnabled ? (
+        <button type="button" onClick={() => setReporting(true)} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-neutral-900 px-3 py-2 text-sm font-medium text-neutral-900 hover:bg-neutral-50">
+          <Info size={14} /> 정보 제보 · 사업자 확인
+        </button>
+      ) : (
+        <button type="button" disabled className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-sm text-neutral-400" title="준비 중">
+          <Info size={14} /> 정보 제보 · 사업자 확인 (준비 중)
+        </button>
+      )}
+      {reporting && <ReportDialog venue={v} onClose={() => setReporting(false)} />}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { applyOverrides, type Override } from "@/lib/overrides";
 import { DEFAULT_FILTERS, filterVenues, inBounds, parseVenues, type Bounds, type Filters, type Venue } from "@/lib/venues";
 
 import { AuthButton } from "./AuthButton";
@@ -46,7 +47,7 @@ const KakaoMapView = dynamic(() => import("./KakaoMapView").then((m) => m.KakaoM
 // 카카오 JS 키가 있으면 카카오맵(한국 사용자에게 익숙한 지도), 없으면 VWorld 래스터로 대체
 const USE_KAKAO = Boolean(process.env.NEXT_PUBLIC_KAKAO_JS_KEY);
 
-export function Explorer({ authEnabled = false }: { authEnabled?: boolean }) {
+export function Explorer({ authEnabled = false, reportsEnabled = false }: { authEnabled?: boolean; reportsEnabled?: boolean }) {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [bounds, setBounds] = useState<Bounds | null>(null);
@@ -62,6 +63,13 @@ export function Explorer({ authEnabled = false }: { authEnabled?: boolean }) {
         const parsed = parseVenues(gj);
         performance.mark("kc:venues-parsed");
         setVenues(parsed);
+        // 승인된 제보·사업자 값은 별도 API에서 받아 덮어쓴다(실패해도 지도는 그대로)
+        if (reportsEnabled) {
+          fetch("/api/overrides")
+            .then((r) => (r.ok ? (r.json() as Promise<Override[]>) : []))
+            .then((ov) => ov.length && setVenues(applyOverrides(parsed, ov)))
+            .catch(() => undefined);
+        }
       })
       .catch((e: Error) => setError(`데이터를 불러오지 못했습니다 (${e.message}). pnpm data:sync 를 실행했나요?`));
   }, []);
@@ -123,7 +131,7 @@ export function Explorer({ authEnabled = false }: { authEnabled?: boolean }) {
         {error && <p className="m-4 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-700">{error}</p>}
         <div className="min-h-0 flex-1 overflow-y-auto">
           {selected ? (
-            <VenueDetail venue={selected} onBack={() => setSelectedId(null)} />
+            <VenueDetail venue={selected} onBack={() => setSelectedId(null)} reportsEnabled={reportsEnabled} />
           ) : venues.length === 0 && !error ? (
             <ListSkeleton />
           ) : (

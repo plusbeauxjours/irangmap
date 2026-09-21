@@ -12,7 +12,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Kakao({ clientId: process.env.AUTH_KAKAO_ID, clientSecret: process.env.AUTH_KAKAO_SECRET })],
   session: { strategy: "jwt" },
   trustHost: true,
-  pages: {},
+  events: {
+    // 로그인마다 사용자 행을 만들거나 갱신한다(DB가 없으면 무시)
+    async signIn({ profile, user }) {
+      const id = profile && typeof profile === "object" && "id" in profile ? String((profile as { id: unknown }).id) : null;
+      if (!id) return;
+      const { upsertUser } = await import("@/lib/session");
+      await upsertUser({ id, name: user.name ?? null, image: user.image ?? null }).catch(() => undefined);
+    },
+  },
   callbacks: {
     jwt({ token, account, profile }) {
       if (account) token.provider = account.provider;
