@@ -200,7 +200,6 @@ export function linkouts(v: Venue) {
     { key: "kakao", label: "카카오맵", href: `https://map.kakao.com/?q=${qAddr}` },
     { key: "naver", label: "네이버 지도", href: `https://map.naver.com/p/search/${q}` },
     { key: "google", label: "구글 검색", href: `https://www.google.com/search?q=${qAddr}` },
-    { key: "instagram", label: "인스타그램", href: `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(name.replace(/\s+/g, ""))}` },
   ];
 }
 

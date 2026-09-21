@@ -6,6 +6,7 @@ import { CATEGORY_LABEL, SOURCE_LABEL, linkouts, type Venue } from "@/lib/venues
 
 import { ArrowLeft, BadgeCheck, Building2, CalendarCheck, Camera, CategoryIcon, ChevronDown, ChevronUp, CircleCheck, CircleHelp, Clock, ExternalLink, Home, Info, MapPin, Phone } from "./icons";
 import { QuickFacts } from "./QuickFacts";
+import { RichText } from "./RichText";
 
 interface Props {
   venue: Venue;
@@ -44,7 +45,9 @@ function Collapsible({ title, text }: { title: string; text: string }) {
           </button>
         )}
       </div>
-      <p className={`mt-1 whitespace-pre-line text-xs leading-relaxed text-neutral-600 ${open || !long ? "" : "line-clamp-3"}`}>{text}</p>
+      <div className={`mt-1 ${open || !long ? "" : "max-h-[4.6rem] overflow-hidden [mask-image:linear-gradient(to_bottom,black_55%,transparent)]"}`}>
+        <RichText text={text} />
+      </div>
     </div>
   );
 }

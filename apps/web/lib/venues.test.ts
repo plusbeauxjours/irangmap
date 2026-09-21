@@ -31,9 +31,8 @@ test("inBounds keeps only venues inside the viewport", () => {
 
 test("linkouts build encoded search deep links for each external service", () => {
   const links = linkouts(venues[2]);
-  expect(links.map((l) => l.key)).toEqual(["naver_blog", "naver_cafe", "kakao", "naver", "google", "instagram"]);
+  expect(links.map((l) => l.key)).toEqual(["naver_blog", "naver_cafe", "kakao", "naver", "google"]);
   expect(links[2].href).toContain(encodeURIComponent("서울형 키즈카페 시립1호점 서울 동작구 노량진로 10"));
-  expect(links[5].href).toContain(encodeURIComponent("서울형키즈카페시립1호점"));
   expect(links[0].href).toBe(`https://search.naver.com/search.naver?where=blog&query=${encodeURIComponent("서울형 키즈카페 시립1호점 동작구 후기")}`);
   expect(links[1].href).toContain("where=article");
 });
@@ -44,7 +43,6 @@ test("regionHint keeps gu/si tokens and the dong in parentheses, and strips (주
   expect(regionHint(undefined)).toBe("");
   const v = { ...venues[1], name: "(주)바운스 세종센터", addr: "세종특별자치시 국세청로 32 (나성동)" };
   expect(decodeURIComponent(linkouts(v)[0].href)).toContain("바운스 세종센터 나성동 후기");
-  expect(decodeURIComponent(linkouts(v)[5].href)).toContain("q=바운스세종센터");
   expect(decodeURIComponent(linkouts(v)[2].href)).not.toContain("(주)");
 });
 

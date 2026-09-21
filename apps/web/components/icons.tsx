@@ -25,7 +25,9 @@ export {
   MapPin,
   Phone,
   Search,
+  SlidersHorizontal,
   Users,
+  X,
 } from "lucide-react";
 
 /** lucide에 양말이 없어 직접 그린다 (24 grid, stroke 2 — lucide와 같은 규격). */
