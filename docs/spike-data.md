@@ -176,3 +176,4 @@
 - 사용자 요청으로 추출 백엔드를 job-crawler와 같은 Azure AI Foundry 리소스로 교체. job-crawler 방식 그대로: v1 surface + 일반 OpenAI 클라이언트, `model`=배포명(`modulabs-gpt-5.5`), Responses API `text.format=json_schema(strict)`, `reasoning.effort=low`. strict 모드 규칙(모든 속성 required, additionalProperties=false)을 `strict_schema()`로 맞춤. 스모크: 6줄 안내문 → 전 필드 정확, 입력 851/출력 244 토큰, 즉시 응답. `claude -p` 경로는 `--backend claude`로 유지.
 - 카카오 로그인: Auth.js v5(next-auth@beta) + Kakao 프로바이더, JWT 세션. 키가 없으면 버튼 자체가 렌더되지 않아 운영에 영향 없음. 카카오 콘솔 설정(로그인 ON, Redirect URI, Client Secret)은 사용자 몫.
 - UI: 필터 태그 나열 → 아이콘 팝오버(적용 수 배지, 제거 칩), 긴 안내문 `RichText`(쉼표 요금 항목 줄 분리, 금액·라벨 굵게), 인스타그램 검색 링크 제거.
+- **Azure 재추출 결과(2026-09-21 11시)**: 48페이지 전부 Azure로 다시 추출(입력 101,828·출력 54,475 토큰). 매장 필드 커버리지가 이전(claude) 대비 개선 — 영업시간 40(←37)·편의 36(←27)·연령 28(←22), 매장명 266(←220), 장문 notes는 절반. Azure 결과만 저장소에 남기고(`official_attrs_azure.json`) 이전 파일 삭제. 부착: **10브랜드 / 매장별 35 + 브랜드 공통 23 = 58곳**(←45), 이용 정보 확인 194곳(서울형 136 + 프랜차이즈 58).
