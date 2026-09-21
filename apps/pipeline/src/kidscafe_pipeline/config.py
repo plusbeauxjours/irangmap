@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     azure_openai_resource: str | None = None
     azure_openai_base_url: str | None = None
     azure_openai_deployment: str = "modulabs-gpt-5.5"
+    kakao_rest_api_key: str | None = None  # 카카오 웹 검색(롱테일 채널 탐색)
 
 
 @lru_cache

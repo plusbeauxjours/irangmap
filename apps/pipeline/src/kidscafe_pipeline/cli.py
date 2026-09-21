@@ -12,6 +12,7 @@ from .config import REPO_ROOT, get_settings
 from .geocode import VWorldGeocoder
 from .sources import (
     fire_mu,
+    longtail,
     official,
     playground,
     rest_cafes,
@@ -543,5 +544,91 @@ def extract_official(
             "total": len(results),
             "cost_usd_now": round(cost, 3),
             "out": str(out),
+        }
+    )
+
+
+discover_app = typer.Typer(no_args_is_help=True, help="개인 업소 공식 채널 탐색")
+app.add_typer(discover_app, name="discover")
+
+
+@discover_app.command("channels")
+def discover_channels(
+    geojson: Path = typer.Option(
+        Path("data/derived/venues.geojson"), help="업소 GeoJSON"
+    ),
+    out: Path = typer.Option(Path("data/raw/longtail/channels.json"), help="결과 JSON"),
+    sample: int = typer.Option(300, help="표본 크기(0이면 전체)"),
+    seed: int = typer.Option(42, help="표본 추출 시드"),
+) -> None:
+    """이용 정보가 없는 비프랜차이즈 업소를 표본 추출해 공식 채널 후보를 찾는다.
+
+    카카오 웹 검색 API 사용. 결과는 URL·제목만 저장.
+    """
+    import random
+
+    settings = get_settings()
+    if not settings.kakao_rest_api_key:
+        raise typer.BadParameter("KAKAO_REST_API_KEY가 없습니다 (.env)")
+    gj = json.loads((_repo_path(geojson) or geojson).read_text(encoding="utf-8"))
+    ch_path = settings.data_dir / "official" / "channels.json"
+    generic: set[str] = set()
+    if ch_path.exists():
+        generic = {
+            r["brand"]
+            for r in json.loads(ch_path.read_text(encoding="utf-8"))
+            if r.get("brand_type") == "generic"
+        }
+    pool = []
+    for f in gj["features"]:
+        p = f["properties"]
+        if p.get("attrs"):
+            continue
+        if enrich_official.brand_of(p["name"], generic):
+            continue
+        pool.append(
+            {
+                "key": p["sources"][0],
+                "name": p["name"],
+                "addr": p.get("addr", ""),
+                "phone": p.get("phone"),
+            }
+        )
+    rnd = random.Random(seed)
+    picked = rnd.sample(pool, min(sample, len(pool))) if sample else pool
+    out_p = _repo_path(out) or out
+    results: dict[str, Any] = {}
+    if out_p.exists():
+        results = json.loads(out_p.read_text(encoding="utf-8"))
+    finder = longtail.ChannelFinder(settings.kakao_rest_api_key)
+    for i, v in enumerate(picked, 1):
+        if v["key"] in results:
+            continue
+        try:
+            found = finder.find(v["name"], v["addr"])
+        except Exception as e:  # noqa: BLE001
+            found = {"error": str(e)[:200]}
+        results[v["key"]] = {**v, **found}
+        if i % 25 == 0:
+            out_p.parent.mkdir(parents=True, exist_ok=True)
+            out_p.write_text(
+                json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8"
+            )
+            print(f"{i}/{len(picked)} calls={finder.calls}", file=sys.stderr)
+    out_p.parent.mkdir(parents=True, exist_ok=True)
+    out_p.write_text(
+        json.dumps(results, ensure_ascii=False, indent=1), encoding="utf-8"
+    )
+    rows = list(results.values())
+    _echo(
+        {
+            "pool_without_attrs_nonfranchise": len(pool),
+            "sampled": len(picked),
+            "with_official_candidate": sum(1 for r in rows if r.get("official")),
+            "with_instagram": sum(1 for r in rows if r.get("instagram")),
+            "with_naver_blog_hit": sum(1 for r in rows if r.get("naver_blog")),
+            "errors": sum(1 for r in rows if r.get("error")),
+            "calls": finder.calls,
+            "out": str(out_p),
         }
     )
