@@ -111,3 +111,24 @@ def test_match_umppa_prefers_public_neighbor_within_30m() -> None:
         SpatialIndex([Candidate("union", "0", "닥터방방", 126.9201, 37.6001)]),
     )
     assert far.tier == "none"
+
+
+def test_geocode_all_skips_network_failures_and_keeps_cache(tmp_path) -> None:
+    import httpx
+
+    class Boom:
+        calls = 0
+
+        def geocode(self, *a, **k):
+            self.calls += 1
+            raise httpx.ConnectError("no route")
+
+    cache = tmp_path / "c.json"
+    cache.write_text('{"A": [127.0, 37.0]}', encoding="utf-8")
+    facs = [
+        {"fclty_id": "A", "address": "x"},
+        {"fclty_id": "B", "address": "서울 강남구 테헤란로 1"},
+    ]
+    coords = enrich_umppa.geocode_all(facs, Boom(), cache)  # type: ignore[arg-type]
+    assert coords == {"A": (127.0, 37.0)}
+    assert "B" not in coords

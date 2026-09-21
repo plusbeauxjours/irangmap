@@ -7,9 +7,12 @@ umppa 단독 업소로 추가한다(서울시가 운영하므로 public=True).
 
 import json
 import re
+import sys
 from datetime import date
 from pathlib import Path
 from typing import Any
+
+import httpx
 
 from .geocode import VWorldGeocoder
 from .names import name_similarity
@@ -38,9 +41,15 @@ def geocode_all(
         if fid in cache:
             continue
         addr = _norm_addr(f.get("address") or "")
-        got = geocoder.geocode(addr) or (
-            geocoder.geocode(" ".join(addr.split()[:4])) if addr else None
-        )
+        try:
+            got = geocoder.geocode(addr) or (
+                geocoder.geocode(" ".join(addr.split()[:4])) if addr else None
+            )
+        except httpx.HTTPError as e:
+            # GitHub 러너에서는 VWorld가 닿지 않는다(2026-09-21). 새 시설만 좌표 없이
+            # 넘기고 캐시된 것은 그대로 쓴다 — 다음 로컬 실행 때 채워진다.
+            print(f"geocode skipped {fid}: {type(e).__name__}", file=sys.stderr)
+            continue
         cache[fid] = [got.lon, got.lat] if got else None
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
