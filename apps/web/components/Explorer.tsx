@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DEFAULT_FILTERS, filterVenues, inBounds, parseVenues, type Bounds, type Filters, type Venue } from "@/lib/venues";
@@ -123,6 +124,13 @@ export function Explorer() {
             <VenueList venues={visible} hoveredId={hoveredId} selectedId={selectedId} onHover={setHoveredId} onSelect={onSelect} />
           )}
         </div>
+        <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-neutral-200 px-4 py-2 text-[11px] text-neutral-500">
+          <Link href="/about" className="hover:text-neutral-900">소개·데이터 출처</Link>
+          <Link href="/terms" className="hover:text-neutral-900">이용약관</Link>
+          <Link href="/privacy" className="hover:text-neutral-900">개인정보처리방침</Link>
+          <a href="mailto:plusbeauxjours@gmail.com" className="hover:text-neutral-900">문의·제보</a>
+          <span className="ml-auto text-neutral-400">지도 © Kakao</span>
+        </footer>
       </aside>
       <main className="order-1 min-h-0 md:order-2">
         {USE_KAKAO ? (
