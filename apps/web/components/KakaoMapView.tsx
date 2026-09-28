@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { CATEGORY_LABEL, type Bounds, type Venue } from "@/lib/venues";
+import { CATEGORY_LABEL, isVerified, type Bounds, type Venue } from "@/lib/venues";
 
 interface Props {
   venues: Venue[];
@@ -149,7 +149,7 @@ export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSe
       return img;
     };
     const showPopup = (v: Venue, m: kakao.maps.Marker) => {
-      const verified = v.attrs ? `<br/><span style="color:#059669">✓ 이용 정보 확인됨</span>` : "";
+      const verified = isVerified(v) ? `<br/><span style="color:#059669">✓ 이용 정보 확인됨</span>` : "";
       const html = `<div style="font:13px/1.4 system-ui;background:#fff;border-radius:8px;padding:8px 10px;box-shadow:0 2px 8px rgba(0,0,0,.2);max-width:240px"><strong>${escapeHtml(v.name)}</strong><br/>${CATEGORY_LABEL[v.category]}${verified}<br/><span style="color:#555">${escapeHtml(v.addr)}</span></div>`;
       if (!popupRef.current) popupRef.current = new kakao.maps.CustomOverlay({ content: html, position: m.getPosition(), yAnchor: 1.4, zIndex: 10 });
       else {
@@ -162,7 +162,7 @@ export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSe
     for (const v of venues) {
       let m = markersRef.current.get(v.id);
       if (!m) {
-        m = new kakao.maps.Marker({ position: new kakao.maps.LatLng(v.lat, v.lon), image: image(v.category, Boolean(v.attrs)), title: v.name, clickable: true });
+        m = new kakao.maps.Marker({ position: new kakao.maps.LatLng(v.lat, v.lon), image: image(v.category, isVerified(v)), title: v.name, clickable: true });
         const marker = m;
         kakao.maps.event.addListener(marker, "click", () => {
           onSelectRef.current(v.id);

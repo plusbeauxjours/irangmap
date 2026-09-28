@@ -23,7 +23,7 @@ export function applyOverrides(venues: Venue[], overrides: Override[]): Venue[] 
       continue;
     }
     if (o.closed) continue;
-    const base: VenueAttrs = v.attrs ?? { source: o.source, source_label: LABEL[o.source], observed_at: o.updatedAt.slice(0, 10) };
+    const base: VenueAttrs = (v.attrs?.source !== "review" && v.attrs) || { source: o.source, source_label: LABEL[o.source], observed_at: o.updatedAt.slice(0, 10) };
     const attrs: VenueAttrs = {
       ...base,
       ...(o.attrs as Partial<VenueAttrs>),

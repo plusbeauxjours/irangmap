@@ -34,6 +34,7 @@ docs/           스파이크·설계 노트
 
 - 카카오 로컬 API 결과는 **장소 ID만** 저장. 구글 Places는 실시간 fetch만(place_id 제외 저장 금지). 네이버 검색 API는 LLM 입력 금지 조항 때문에 쓰지 않는다.
 - `naver_aux`(네이버 플레이스 보조 크롤)와 `umppa`는 킬스위치 기본 꺼짐, 단일 IP, 로그인 없음, ≥5초/건, **프록시·VPN 우회 금지**, 차단되면 중단. `NAVER_AUX_LEVEL=1`은 포인터(URL·홈페이지·인스타 링크)만. 어떤 단계에서도 리뷰·사진·평점·리뷰수·방문자수 저장 금지.
+- 예외(2026-09-28 완화): `extract reviews`는 카카오(다음) 블로그·카페 검색 **요약**에서 이용 정보 값만 뽑아 `data/derived/review_attrs.json`에 저장한다. 저장하는 것은 값 + 근거 글 URL·작성일 + 100자 이하 근거 구절뿐이고, 글 제목·본문·사진·평점은 저장하지 않는다.
 - 서울형 키즈카페 "예약 오픈 알림"은 서울시 협의 전 만들지 않는다.
 
 ## 개발환경
@@ -59,7 +60,8 @@ pnpm pipeline ingest umppa --dry-run --save data/raw/umppa.json                 
 pnpm pipeline report seeds                                                             # 3소스 union·매칭 tier (DB 불필요)
 pnpm pipeline ingest official --dry-run                                               # 프랜차이즈 공식 사이트(channels.json) 수집: robots·Crawl-delay 준수, 3초/호스트
 pnpm pipeline extract official --brands 바운스,뽀로로파크                                  # 저장 텍스트 → 속성 (claude -p 헤드리스, API 키 불필요)
-pnpm pipeline export geojson --out data/derived/venues.geojson                         # union + umppa attrs + official attrs → GeoJSON
+pnpm pipeline extract reviews --limit 100                                               # 공식·서울형 정보 없는 업소: 카카오 블로그·카페 검색 요약 → 속성(재개 가능, `--model`)
+pnpm pipeline export geojson --out data/derived/venues.geojson                         # union + umppa + official + review attrs → GeoJSON
 ```
 
 `.env`에 필요한 키: `DATA_GO_KR_KEY` + `DATAGOKR_THEMEPARK_URL`/`DATAGOKR_RESTCAFE_URL`/`DATAGOKR_PLAYGROUND_URL`(엔드포인트, `.env.example` 참고) · `VWORLD_KEY`(지오코딩) · `GG_DATA_KEY`(경기데이터드림, 선택). 오너가 더 준비할 것은 [docs/owner-todo.md](docs/owner-todo.md).
@@ -102,8 +104,9 @@ uv run --directory apps/pipeline alembic revision --autogenerate -m "설명"
 
 1. **서울형 키즈카페** — 서울시 우리동네키움포털(`umppa.seoul.go.kr/icare`, robots Allow) 공개 이용안내를 `ingest umppa`로 수집. `export geojson`이 주소를 VWorld로 지오코딩(`data/derived/umppa_geocode_cache.json`)해 300 m 안 이름 유사도(괄호 별칭·구/동 접미 제거, 30 m 안 공공류는 이름 무관)로 union 업소에 붙이고, 없으면 공공 업소로 추가한다(2026-09-20: 140개소 → 병합 71 · 신규 69). 사진은 저장·임베드하지 않고 서울시 원본 링크만 둔다.
 2. **프랜차이즈 공식 사이트** — `data/raw/official/channels.json`(브랜드별 공식·매장목록·이용안내 URL, robots 상태, 렌더 방식)에 적힌 페이지만 `ingest official`로 받아 텍스트(+원본 HTML)로 저장하고, `extract official`이 브랜드 공통 값(brand_level)과 매장별 값(stores[])을 뽑는다. **기본 백엔드는 job-crawler와 같은 Azure AI Foundry 리소스**(`llm_azure.py`: `.env`의 `AZURE_OPENAI_API_KEY`·`AZURE_OPENAI_RESOURCE`, v1 surface `https://{resource}.services.ai.azure.com/openai/v1`, `model`=배포명 `modulabs-gpt-5.5`, Responses API + strict json_schema). `--backend claude`면 Claude Code 헤드리스(`extract_claude.py`)로 대체. `export geojson`이 브랜드 공통은 `scope=brand`(상세에 '브랜드 공통 안내' 경고), 매장명 지역 토큰이 맞으면 `scope=store`로 붙인다(`enrich_official.py`). 2026-09-21(Azure 재추출): 10브랜드 58곳 부착(매장별 35·공통 23), 목록만 있는 브랜드는 전화만 보충(30곳).
-3. 롱테일 → 사업자 확인·이용자 제보(가동 중). 공식 홈페이지 탐색은 표본 300곳에서 1~2곳만 나와 폐기(`discover channels`, docs/spike-data.md 2026-09-21).
-4. 사진 → 사업자·이용자 제공분만.
+3. **블로그·카페 후기** — `extract reviews`(`enrich_review.py`): 업소명 + 지역 힌트 + "요금"으로 카카오 블로그·카페 각 10건을 검색해 `lib/reviews.ts`와 같은 규칙(업소 토큰 없는 글 제외·협찬 뒤로·제목 일치 우선)으로 6건을 골라 제목+요약을 Azure strict json_schema로 추출한다. 같은 지점 글이라고 판단(same_venue)·confidence ≥ 0.5·핵심 값(연령·아동·보호자·양말) 하나 이상일 때만 `export geojson`이 **attrs가 없는 업소에만** `source=review`로 붙인다. 모델은 `apps/pipeline/.env`의 `AZURE_REVIEW_RESOURCE`·`AZURE_REVIEW_API_KEY`·`AZURE_REVIEW_MODEL`(기본 gpt-4.1-mini, 비추론이라 reasoning 미전송; 없으면 gpt-5.5 설정 사용). 2026-09-28: 첫 680곳은 gpt-5.5, 나머지는 gpt-4.1-mini(20곳 비교에서 요금 금액 일치 ~90%, 호출당 약 2.2k in/0.3k out 토큰). 웹은 초록 체크 대신 "후기 기반"(호박색)으로 표시하고 마커 초록 링·"정보 있음" 필터에서는 제외한다(`isVerified`).
+4. 롱테일 → 사업자 확인·이용자 제보(가동 중). 공식 홈페이지 탐색은 표본 300곳에서 1~2곳만 나와 폐기(`discover channels`, docs/spike-data.md 2026-09-21).
+5. 사진 → 사업자·이용자 제공분만.
 
 지도 줌은 휠 1노치 = 정수 1단계(6~17)로 스냅한다(`MapView.tsx`, 중간 단계 렌더를 없애 체감 속도 확보).
 

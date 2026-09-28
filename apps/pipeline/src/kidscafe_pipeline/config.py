@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     azure_openai_resource: str | None = None
     azure_openai_base_url: str | None = None
     azure_openai_deployment: str = "modulabs-gpt-5.5"
+    # 후기 추출(extract reviews) 전용 — 비어 있으면 위 Azure 설정을 쓴다.
+    azure_review_api_key: str | None = None
+    azure_review_resource: str | None = None
+    azure_review_base_url: str | None = None
+    azure_review_model: str | None = None
     kakao_rest_api_key: str | None = None  # 카카오 웹 검색(롱테일 채널 탐색)
 
 

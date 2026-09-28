@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { compactFacts } from "@/lib/facts";
-import type { Venue } from "@/lib/venues";
+import { isVerified, type Venue } from "@/lib/venues";
 
 import { Baby, BadgeCheck, Building2, CategoryIcon, CircleCheck, CircleHelp, Coins, Home, MapPin, SockIcon, Users } from "./icons";
 
@@ -59,19 +59,21 @@ export function VenueList({ venues, hoveredId, selectedId, onHover, onSelect }: 
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-[15px] font-semibold leading-tight text-neutral-900">{v.name}</span>
-                  {v.attrs && (
+                  {v.attrs && (isVerified(v) ? (
                     <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-verified-50 px-1.5 py-0.5 text-[10px] font-semibold text-verified-700">
                       <CircleCheck size={11} aria-hidden="true" /> 확인
                     </span>
-                  )}
+                  ) : (
+                    <span className="inline-flex shrink-0 items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">후기 기반</span>
+                  ))}
                 </div>
                 <p className="mt-1.5 flex flex-wrap gap-1">
                   {facts ? (
                     <>
-                      {f("age") && <Chip icon={<Baby size={11} />} text={f("age")!} tone="green" />}
-                      {f("fee") && <Chip icon={<Coins size={11} />} text={f("fee")!} tone="green" />}
-                      {f("guardian") && <Chip icon={<Users size={11} />} text={`보호자 ${f("guardian")}`} tone="green" />}
-                      {f("socks") && <Chip icon={<SockIcon width={11} height={11} />} text="양말 필수" tone="green" />}
+                      {f("age") && <Chip icon={<Baby size={11} />} text={f("age")!} tone={isVerified(v) ? "green" : "neutral"} />}
+                      {f("fee") && <Chip icon={<Coins size={11} />} text={f("fee")!} tone={isVerified(v) ? "green" : "neutral"} />}
+                      {f("guardian") && <Chip icon={<Users size={11} />} text={`보호자 ${f("guardian")}`} tone={isVerified(v) ? "green" : "neutral"} />}
+                      {f("socks") && <Chip icon={<SockIcon width={11} height={11} />} text="양말 필수" tone={isVerified(v) ? "green" : "neutral"} />}
                     </>
                   ) : (
                     <>

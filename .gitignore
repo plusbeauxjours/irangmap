@@ -31,6 +31,7 @@ data/derived/*
 # 작은 파생 파일은 커밋: 정기 갱신 워크플로가 재사용한다
 !data/derived/official_attrs*.json
 !data/derived/umppa_geocode_cache.json
+!data/derived/review_attrs.json
 
 # OMC 세션 상태 (도구 로컬)
 .omc/

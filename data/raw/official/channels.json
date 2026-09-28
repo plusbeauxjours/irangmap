@@ -522,5 +522,183 @@
   "store_count_hint": "53 in local data, incl. 헬로방방 and unrelated '방방곡곡 … 푸드트럭', '파티방방'",
   "notes": "Common noun (slang for trampoline). Token is noisy — consider excluding '방방곡곡' in classify.py and letting 헬로방방 win first.",
   "checked_at": "2026-09-20"
+ },
+ {
+  "brand": "우리끼리",
+  "brand_type": "franchise",
+  "official_url": "https://uriggiri.kr/",
+  "store_list_url": null,
+  "info_url": null,
+  "instagram": null,
+  "robots": {
+   "status": "present",
+   "store_info_paths_allowed": true,
+   "applicable_lines": [
+    "User-agent: *",
+    "Disallow: /adm/ /shop/ /data/ /plugin/ /lib/ /bbs/"
+   ],
+   "ai_specific": "none"
+  },
+  "render": "plain_html",
+  "store_count_hint": "'전국 130여 개 매장' (home page lists name+address+tel); 138 in local data",
+  "notes": "(주)우리끼리, 단독 대관 무인 키즈카페. Single-page franchise site; home page 매장안내 section has full store list (name 'OO마을 지역점', address, tel 1899-3635). No consumer fees/hours/age — booking via Naver 예약 per store. /bbs/ disallowed (not fetched).",
+  "checked_at": "2026-09-28"
+ },
+ {
+  "brand": "착한토끼",
+  "brand_type": "franchise",
+  "official_url": "https://chakantokki.co.kr/",
+  "store_list_url": "https://chakantokki.co.kr/store",
+  "info_url": null,
+  "instagram": "https://www.instagram.com/chakan.tokki",
+  "robots": {
+   "status": "present",
+   "store_info_paths_allowed": true,
+   "applicable_lines": [
+    "User-agent: *",
+    "Allow: /"
+   ],
+   "ai_specific": "none"
+  },
+  "render": "plain_html",
+  "store_count_hint": "38 houses (notice '038호 하우스'); /store paginated ?page=1..3; 34 in local data",
+  "notes": "㈜어나더플래닛, 감성 무인키즈카페 ('OO하우스'). /store has region+house name+address per card. /sub/brand/guide ('공간 & 운영') is image-only; notices are opening announcements. No fees/hours on site.",
+  "extra_urls": [
+   "https://chakantokki.co.kr/store?page=2",
+   "https://chakantokki.co.kr/store?page=3"
+  ],
+  "checked_at": "2026-09-28"
+ },
+ {
+  "brand": "리카키즈룸",
+  "brand_type": "franchise",
+  "official_url": "https://www.lycka.co.kr/",
+  "store_list_url": null,
+  "info_url": null,
+  "instagram": null,
+  "robots": {
+   "status": "none",
+   "store_info_paths_allowed": true,
+   "applicable_lines": [
+    "robots.txt 404"
+   ],
+   "ai_specific": "none"
+  },
+  "render": "plain_html",
+  "store_count_hint": "home '전국 지점 현황' table (지점명·주소·예약하기); 18 name hits in local data",
+  "notes": "KIP 계열 sister brand of 큐리키즈 (see 큐리키즈 notes). Franchise-recruitment single page with store table; reservation links go to Naver Place. No fees on site.",
+  "checked_at": "2026-09-28"
+ },
+ {
+  "brand": "꿀잼키즈룸",
+  "brand_type": "franchise",
+  "official_url": "https://gguljam.kr/",
+  "store_list_url": "https://gguljam.kr/32",
+  "info_url": null,
+  "instagram": null,
+  "robots": {
+   "status": "present",
+   "store_info_paths_allowed": true,
+   "applicable_lines": [
+    "User-agent: *",
+    "Allow: /",
+    "Disallow: /site_join /login /shop_cart /?mode*"
+   ],
+   "ai_specific": "none"
+  },
+  "render": "plain_html",
+  "store_count_hint": "~130 store names on /32 (매장현황); 137 in local data",
+  "notes": "주식회사 러스 (imweb). Franchise-recruitment site; /32 lists store names only (no address/phone). No consumer fees/hours; booking via Naver 예약, kakao pf.kakao.com/_RCxcUxj.",
+  "checked_at": "2026-09-28"
+ },
+ {
+  "brand": "무키무키",
+  "brand_type": "franchise",
+  "official_url": null,
+  "store_list_url": null,
+  "info_url": null,
+  "instagram": null,
+  "robots": {
+   "status": "n/a",
+   "store_info_paths_allowed": null,
+   "applicable_lines": [],
+   "ai_specific": "none"
+  },
+  "render": "n/a",
+  "store_count_hint": null,
+  "notes": "무인 키즈카페 franchise; no HQ website found (mukimukimuki.cafe24.com is an unused cafe24 placeholder). Per-store Naver 예약/Instagram only.",
+  "checked_at": "2026-09-28"
+ },
+ {
+  "brand": "제니스",
+  "brand_type": "franchise",
+  "official_url": null,
+  "store_list_url": null,
+  "info_url": null,
+  "instagram": null,
+  "robots": {
+   "status": "n/a",
+   "store_info_paths_allowed": null,
+   "applicable_lines": [],
+   "ai_specific": "none"
+  },
+  "render": "n/a",
+  "store_count_hint": null,
+  "notes": "제니스키즈카페 (제니스키즈.com, imweb, robots allows /) is a startup-consulting/interior site: no store list, no fees. Skipped.",
+  "checked_at": "2026-09-28"
+ },
+ {
+  "brand": "슈퍼윙스",
+  "brand_type": "franchise",
+  "official_url": null,
+  "store_list_url": null,
+  "info_url": null,
+  "instagram": null,
+  "robots": {
+   "status": "n/a",
+   "store_info_paths_allowed": null,
+   "applicable_lines": [],
+   "ai_specific": "none"
+  },
+  "render": "n/a",
+  "store_count_hint": null,
+  "notes": "superwingskidscafe.com has expired (domain-for-sale page). Fees only in voucher resellers (KKday, 하나투어, 마이리얼트립). Skipped.",
+  "checked_at": "2026-09-28"
+ },
+ {
+  "brand": "허니마운틴",
+  "brand_type": "franchise",
+  "official_url": null,
+  "store_list_url": null,
+  "info_url": null,
+  "instagram": null,
+  "robots": {
+   "status": "n/a",
+   "store_info_paths_allowed": null,
+   "applicable_lines": [],
+   "ai_specific": "none"
+  },
+  "render": "n/a",
+  "store_count_hint": null,
+  "notes": "No official site found via search. Skipped.",
+  "checked_at": "2026-09-28"
+ },
+ {
+  "brand": "플레이방방",
+  "brand_type": "franchise",
+  "official_url": null,
+  "store_list_url": null,
+  "info_url": null,
+  "instagram": null,
+  "robots": {
+   "status": "n/a",
+   "store_info_paths_allowed": null,
+   "applicable_lines": [],
+   "ai_specific": "none"
+  },
+  "render": "n/a",
+  "store_count_hint": null,
+  "notes": "No official site found (single 김포 store on third-party listings). Skipped.",
+  "checked_at": "2026-09-28"
  }
 ]

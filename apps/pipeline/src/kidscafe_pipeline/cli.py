@@ -7,7 +7,14 @@ from typing import Any
 
 import typer
 
-from . import enrich_official, enrich_umppa, extract_claude, llm_azure, reports
+from . import (
+    enrich_official,
+    enrich_review,
+    enrich_umppa,
+    extract_claude,
+    llm_azure,
+    reports,
+)
 from .config import REPO_ROOT, get_settings
 from .geocode import VWorldGeocoder
 from .sources import (
@@ -292,6 +299,12 @@ def export_geojson(
         official_stats = enrich_official.attach(
             venues, results, generic, date.today().isoformat()
         )
+    review_stats = None
+    review_path = raw.parent / "derived" / "review_attrs.json"
+    if review_path.exists():
+        review_stats = enrich_review.attach(
+            venues, json.loads(review_path.read_text(encoding="utf-8"))
+        )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(
         json.dumps(reports.to_geojson(venues), ensure_ascii=False), encoding="utf-8"
@@ -301,6 +314,7 @@ def export_geojson(
             "features": len(venues),
             "umppa": umppa_stats,
             "official": official_stats,
+            "review": review_stats,
             "out": str(out),
             "bytes": out.stat().st_size,
         }
@@ -543,6 +557,149 @@ def extract_official(
             "extracted_now": done,
             "total": len(results),
             "cost_usd_now": round(cost, 3),
+            "out": str(out),
+        }
+    )
+
+
+@extract_app.command("reviews")
+def extract_reviews(
+    geojson: Path = typer.Option(
+        Path("data/derived/venues.geojson"), help="업소 GeoJSON(대상 선정용)"
+    ),
+    out: Path = typer.Option(
+        Path("data/derived/review_attrs.json"), help="결과 캐시 JSON(재개 가능)"
+    ),
+    limit: int | None = typer.Option(None, help="이번에 처리할 업소 수 상한"),
+    workers: int = typer.Option(4, help="동시 처리 수"),
+    delay: float = typer.Option(0.3, help="카카오 검색 호출 간격(초, 워커별)"),
+    redo_errors: bool = typer.Option(False, "--redo-errors", help="오류 난 건 재시도"),
+    model: str | None = typer.Option(
+        None, help="Azure 배포명. 기본 AZURE_REVIEW_MODEL → AZURE_OPENAI_DEPLOYMENT"
+    ),
+) -> None:
+    """공식·서울형 속성이 없는 업소의 블로그·카페 후기(카카오 검색 요약)에서 속성 추출.
+
+    글 본문은 저장하지 않고 값 + 근거 글 URL·날짜 + 100자 근거만 남긴다.
+    """
+    import threading
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    import httpx
+
+    settings = get_settings()
+    api_key = settings.azure_review_api_key or settings.azure_openai_api_key
+    if not settings.kakao_rest_api_key or not api_key:
+        raise typer.BadParameter("KAKAO_REST_API_KEY·AZURE_OPENAI_API_KEY가 필요합니다")
+    if settings.azure_review_api_key:
+        client = llm_azure.make_client(
+            api_key, settings.azure_review_resource, settings.azure_review_base_url
+        )
+    else:
+        client = llm_azure.make_client(
+            api_key, settings.azure_openai_resource, settings.azure_openai_base_url
+        )
+    deployment = (
+        model or settings.azure_review_model or settings.azure_openai_deployment
+    )
+    # gpt-5 계열만 추론 모델 — 그 외(gpt-4.1-mini 등)에는 reasoning을 보내지 않는다
+    effort = "low" if deployment.startswith(("gpt-5", "modulabs-gpt-5", "o")) else None
+    src = _repo_path(geojson) or geojson
+    out = _repo_path(out) or out
+    cache: dict[str, Any] = (
+        json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
+    )
+    todo = []
+    for f in json.loads(src.read_text(encoding="utf-8"))["features"]:
+        p = f["properties"]
+        key = p["sources"][0]
+        if p.get("attrs") and p["attrs"].get("source") != enrich_review.SOURCE:
+            continue
+        if key in cache and not (redo_errors and cache[key].get("error")):
+            continue
+        todo.append((key, p["name"], p.get("addr")))
+    todo = todo[:limit] if limit is not None else todo
+    http = httpx.Client(
+        headers={"Authorization": f"KakaoAK {settings.kakao_rest_api_key}"},
+        timeout=15,
+    )
+    lock = threading.Lock()
+    counter = {"done": 0, "hit": 0}
+
+    def search(kind: str, q: str) -> list[dict[str, Any]]:
+        for attempt in range(3):
+            r = http.get(
+                f"https://dapi.kakao.com/v2/search/{kind}",
+                params={"query": q, "size": 10, "sort": "accuracy"},
+            )
+            if r.status_code == 429:
+                time.sleep(5 * (attempt + 1))
+                continue
+            r.raise_for_status()
+            time.sleep(delay)
+            return r.json().get("documents") or []
+        raise RuntimeError("kakao 429")
+
+    def work(item: tuple[str, str, str | None]) -> None:
+        key, name, addr = item
+        q = enrich_review.query_of(name, addr)
+        rec: dict[str, Any] = {
+            "name": name,
+            "query": q,
+            "fetched_at": date.today().isoformat(),
+        }
+        try:
+            posts = enrich_review.shape_posts(
+                search("blog", q), search("cafe", q), name
+            )
+            rec["posts"] = len(posts)
+            if posts:
+                data = llm_azure.extract_json(
+                    client,
+                    enrich_review.build_prompt(name, addr, posts),
+                    system=enrich_review.SYSTEM,
+                    schema=enrich_review.SCHEMA,
+                    name="kidscafe_review_facts",
+                    deployment=deployment,
+                    effort=effort,
+                    max_output_tokens=3000,
+                )
+                if data.get("error"):
+                    rec["error"] = data["error"]
+                else:
+                    rec.update(enrich_review.compact(data, posts))
+                    rec["model"] = deployment
+                    rec["usage"] = {
+                        k: (data.get("_usage") or {}).get(k) for k in ("in", "out")
+                    }
+        except Exception as e:  # noqa: BLE001 — 한 건 실패는 기록하고 계속
+            rec["error"] = f"{type(e).__name__}: {str(e)[:200]}"
+        with lock:
+            cache[key] = rec
+            counter["done"] += 1
+            hit = enrich_review.to_attrs(rec) is not None
+            counter["hit"] += hit
+            if counter["done"] % 10 == 0 or counter["done"] == len(todo):
+                out.parent.mkdir(parents=True, exist_ok=True)
+                out.write_text(
+                    json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8"
+                )
+            print(
+                f"[{counter['done']}/{len(todo)}] {'HIT ' if hit else '    '}"
+                f"{name} posts={rec.get('posts')} err={rec.get('error', '')[:60]}",
+                file=sys.stderr,
+            )
+
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        list(ex.map(work, todo))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(cache, ensure_ascii=False, indent=1), encoding="utf-8")
+    _echo(
+        {
+            "processed_now": counter["done"],
+            "hits_now": counter["hit"],
+            "total_cached": len(cache),
             "out": str(out),
         }
     )

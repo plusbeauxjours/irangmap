@@ -67,22 +67,47 @@ def extract(
     prompt = (
         f"브랜드: {brand}\n출처 URL: {url}\n\n=== 안내문 텍스트 ===\n{text[:40000]}"
     )
+    return extract_json(
+        client,
+        prompt,
+        system=SYSTEM,
+        schema=SCHEMA,
+        name="kidscafe_facts",
+        deployment=deployment,
+        effort=effort,
+        max_output_tokens=max_output_tokens,
+    )
+
+
+def extract_json(
+    client: OpenAI,
+    prompt: str,
+    *,
+    system: str,
+    schema: dict[str, Any],
+    name: str,
+    deployment: str = "modulabs-gpt-5.5",
+    effort: str | None = "low",
+    max_output_tokens: int = 6000,
+) -> dict[str, Any]:
+    """프롬프트 → strict json_schema 응답 dict + _usage. 실패하면 {'error': ...}."""
     try:
         resp = client.responses.create(
             model=deployment,
             input=[
-                {"role": "system", "content": SYSTEM},
+                {"role": "system", "content": system},
                 {"role": "user", "content": prompt},
             ],
             text={
                 "format": {
                     "type": "json_schema",
-                    "name": "kidscafe_facts",
-                    "schema": strict_schema(SCHEMA),
+                    "name": name,
+                    "schema": strict_schema(schema),
                     "strict": True,
                 }
             },
-            reasoning={"effort": effort},
+            # 비추론 모델(gpt-4.1-mini 등)은 reasoning을 받지 않는다 → effort=None
+            **({"reasoning": {"effort": effort}} if effort else {}),
             max_output_tokens=max_output_tokens,
         )
     except Exception as e:  # noqa: BLE001 — 호출 실패는 결과 파일에 남기고 다음 페이지로

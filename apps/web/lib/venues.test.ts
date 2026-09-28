@@ -1,5 +1,5 @@
 import { firstAmount } from "./facts";
-import { ATTRIBUTE_SCHEMA, DEFAULT_FILTERS, filterVenues, inBounds, linkouts, normalizeSido, parseVenues, regionHint, type Venue } from "./venues";
+import { ATTRIBUTE_SCHEMA, DEFAULT_FILTERS, filterVenues, inBounds, isVerified, linkouts, normalizeSido, parseVenues, regionHint, type Venue } from "./venues";
 
 const gj = {
   features: [
@@ -58,4 +58,10 @@ describe("firstAmount", () => {
     expect(firstAmount("보호자입장권 8,000원")).toBe("8,000원");
     expect(firstAmount("무료")).toBeNull();
   });
+});
+
+test("isVerified excludes review-derived attrs", () => {
+  expect(isVerified({ attrs: null })).toBe(false);
+  expect(isVerified({ attrs: { source: "official", source_label: "x", observed_at: "2026-09-28" } })).toBe(true);
+  expect(isVerified({ attrs: { source: "review", source_label: "블로그·카페 후기", observed_at: "2026-09-28" } })).toBe(false);
 });

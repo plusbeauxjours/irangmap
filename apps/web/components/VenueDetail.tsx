@@ -105,7 +105,25 @@ export function VenueDetail({ venue: v, onBack, reportsEnabled = false, reviewsE
         </div>
       </header>
 
-      {a ? (
+      {a?.source === "review" ? (
+        <p className="flex items-start gap-1.5 rounded-card bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+          <Info size={14} className="mt-0.5 shrink-0" />
+          <span>
+            <strong>블로그·카페 후기 기반</strong> · 최근 글 {a.observed_at}
+            <span className="block text-amber-800/80">
+              방문 후기에서 자동으로 뽑은 값이라 확인되지 않았어요. 요금·연령은 방문 전 업소에 확인하세요.
+              {a.evidence_url && (
+                <>
+                  {" "}
+                  <a href={a.evidence_url} target="_blank" rel="noopener noreferrer" className="underline">
+                    근거 글
+                  </a>
+                </>
+              )}
+            </span>
+          </span>
+        </p>
+      ) : a ? (
         <p className={`flex items-start gap-1.5 rounded-card px-3 py-2.5 text-xs ${a.scope === "brand" ? "bg-amber-50 text-amber-900" : "bg-verified-50 text-verified-800"}`}>
           <CircleCheck size={14} className="mt-0.5 shrink-0" />
           <span>

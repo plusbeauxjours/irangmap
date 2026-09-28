@@ -21,6 +21,8 @@ export interface VenueAttrs {
   source: string;
   source_label: string;
   scope?: "store" | "brand" | null;
+  /** source="review"일 때: 추출 신뢰도(0~1) */
+  confidence?: number | null;
   observed_at: string;
   evidence_url?: string | null;
   reservation_url?: string | null;
@@ -147,7 +149,7 @@ export function filterVenues(venues: Venue[], f: Filters): Venue[] {
     if (f.multiSourceOnly && v.sources.length < 2) return false;
     if (f.indoorOnly && v.indoor !== "실내") return false;
     if (f.publicOnly && !v.public) return false;
-    if (f.verifiedOnly && !v.attrs) return false;
+    if (f.verifiedOnly && !isVerified(v)) return false;
     if (q && !`${v.name} ${v.addr}`.toLowerCase().includes(q)) return false;
     return true;
   });
@@ -164,11 +166,15 @@ export function toFeatureCollection(venues: Venue[]) {
       type: "Feature" as const,
       id: v.id,
       geometry: { type: "Point" as const, coordinates: [v.lon, v.lat] },
-      properties: { id: v.id, name: v.name, category: v.category, addr: v.addr, sources: v.sources.length, verified: v.attrs ? 1 : 0 },
+      properties: { id: v.id, name: v.name, category: v.category, addr: v.addr, sources: v.sources.length, verified: isVerified(v) ? 1 : 0 },
     })),
   };
 }
 
+/** 공식·공공·제보로 확인된 이용 정보인가. 블로그·카페 후기에서 뽑은 값(source="review")은 제외. */
+export function isVerified(v: Pick<Venue, "attrs">): boolean {
+  return Boolean(v.attrs) && v.attrs?.source !== "review";
+}
 
 /** 후기 검색용 지역 힌트: 주소에서 구·시·군 두 토큰과 괄호 안 동. 지점 많은 브랜드의 다른 지점 글을 걸러준다. */
 export function regionHint(addr: string | undefined): string {
