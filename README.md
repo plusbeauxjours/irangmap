@@ -7,7 +7,7 @@
 ## 구조
 
 ```
-apps/web        Next.js 15 App Router. 지도 MVP: MapLibre GL + VWorld 배경지도, 좌 리스트 ↔ 우 지도(뷰포트 동기화·클러스터·필터).
+apps/web        Next.js 15 App Router. 지도 MVP: MapLibre GL + VWorld 배경지도, 좌 리스트 ↔ 우 지도(뷰포트 동기화·클러스터·필터). 첫 진입 시 위치 권한을 묻고 허용하면 내 주변에서 시작(거부·실패·국외면 전국 뷰, `lib/geolocation.ts`).
                 지금은 public/data/venues.geojson(정적)을 읽고, DB가 붙으면 route handler로 바꾼다.
 apps/pipeline   Python 3.12 (uv). 공공데이터 수집·정규화·매칭·분류. alembic이 스키마의 유일한 소유자.
                 sources/  datagokr(페이징 클라이언트) · themepark_other · rest_cafes · playground · fire_mu

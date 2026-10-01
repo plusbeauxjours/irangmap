@@ -12,6 +12,7 @@ import {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
 
+import { getStartPosition } from "@/lib/geolocation";
 import { CATEGORY_LABEL, toFeatureCollection, type Bounds, type Venue } from "@/lib/venues";
 
 const KEY = process.env.NEXT_PUBLIC_VWORLD_KEY ?? "";
@@ -49,6 +50,8 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
   const [ready, setReady] = useState(false);
   const [sourceLoaded, setSourceLoaded] = useState(false);
   const labelsRef = useRef<Map<number, Marker>>(new Map());
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
 
   // 지도 생성 (1회)
   useEffect(() => {
@@ -203,7 +206,14 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
       emitBounds();
     });
     map.on("moveend", emitBounds);
+    // 첫 진입: 현재 위치가 잡히면 동네 단위로 시작(이미 업소를 골랐다면 그쪽 우선)
+    let cancelled = false;
+    void getStartPosition().then((p) => {
+      if (cancelled || !p || selectedRef.current) return;
+      map.easeTo({ center: [p.lon, p.lat], zoom: 12 });
+    });
     return () => {
+      cancelled = true;
       canvasContainer.removeEventListener("wheel", onWheel);
       for (const marker of labelsRef.current.values()) marker.remove();
       labelsRef.current.clear();

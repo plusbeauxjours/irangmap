@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { getStartPosition } from "@/lib/geolocation";
 import { CATEGORY_LABEL, isVerified, type Bounds, type Venue } from "@/lib/venues";
 
 interface Props {
@@ -18,6 +19,7 @@ const COLOR: Record<Venue["category"], string> = { kids_cafe: "#e11d48", trampol
 // 카카오 레벨: 1(가장 확대) ~ 14(가장 축소). 13이면 남한 전체가 한 화면에 든다.
 const LEVEL_COUNTRY = 13;
 const LEVEL_DETAIL = 3;
+const LEVEL_NEARBY = 6; // 현재 위치 기준 동네 단위
 const CLUSTER_MIN_LEVEL = 5; // 이 레벨 미만(더 확대)에서는 개별 마커
 
 let sdkPromise: Promise<void> | null = null;
@@ -123,6 +125,12 @@ export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSe
           const pos = new kakao.maps.LatLng(pre.lat, pre.lon);
           map.setLevel(LEVEL_DETAIL, { anchor: pos });
           map.setCenter(pos);
+        } else {
+          void getStartPosition().then((p) => {
+            if (cancelled || !p || selectedRef.current) return;
+            map.setLevel(LEVEL_NEARBY);
+            map.setCenter(new kakao.maps.LatLng(p.lat, p.lon));
+          });
         }
         performance.mark("kc:map-load");
         setReady(true);
