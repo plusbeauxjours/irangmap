@@ -71,7 +71,7 @@ export function VenueDetail({ venue: v, onBack, reportsEnabled = false, reviewsE
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1 self-start rounded text-sm text-neutral-500 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
+        className="-my-2 inline-flex min-h-11 items-center gap-1 self-start rounded text-sm text-neutral-500 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300"
       >
         <ArrowLeft size={16} /> 목록으로
       </button>

@@ -76,7 +76,7 @@ export function FiltersBar({ filters, onChange, total, visible }: Props) {
             value={filters.query}
             onChange={(e) => onChange({ ...filters, query: e.target.value })}
             placeholder="이름·주소 검색 (예: 판교, 챔피언)"
-            className={`w-full rounded-xl border border-neutral-200 py-2 pl-9 pr-3 text-sm outline-none transition focus:border-neutral-900 ${FOCUS_RING} focus-visible:ring-neutral-300`}
+            className={`w-full rounded-xl border border-neutral-200 py-2 pl-9 pr-3 text-base outline-none md:text-sm transition focus:border-neutral-900 ${FOCUS_RING} focus-visible:ring-neutral-300`}
             aria-label="검색"
           />
         </label>
@@ -97,7 +97,7 @@ export function FiltersBar({ filters, onChange, total, visible }: Props) {
         </button>
 
         {open && (
-          <div role="dialog" aria-label="필터" className="absolute right-0 top-12 z-20 w-72 rounded-card border border-neutral-200 bg-white p-3 shadow-card">
+          <div role="dialog" aria-label="필터" className="absolute right-0 top-12 z-20 w-[min(18rem,calc(100vw-2rem))] rounded-card border border-neutral-200 bg-white p-3 shadow-card">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-sm font-semibold">필터</span>
               <div className="flex items-center gap-2">
@@ -106,7 +106,7 @@ export function FiltersBar({ filters, onChange, total, visible }: Props) {
                     초기화
                   </button>
                 )}
-                <button type="button" onClick={() => setOpen(false)} aria-label="닫기" className="rounded p-1 text-neutral-500 hover:bg-neutral-100">
+                <button type="button" onClick={() => setOpen(false)} aria-label="닫기" className="-m-1.5 rounded p-2.5 text-neutral-500 hover:bg-neutral-100">
                   <X size={16} />
                 </button>
               </div>
@@ -138,7 +138,7 @@ export function FiltersBar({ filters, onChange, total, visible }: Props) {
             <ul className="divide-y divide-neutral-100">
               {TOGGLES.map((t) => (
                 <li key={t.key}>
-                  <label className="flex cursor-pointer items-center gap-2.5 py-2">
+                  <label className="flex min-h-11 cursor-pointer items-center gap-2.5 py-2">
                     <input
                       type="checkbox"
                       checked={filters[t.key]}

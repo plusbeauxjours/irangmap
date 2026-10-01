@@ -16,6 +16,12 @@ declare namespace kakao.maps {
   }
   class Point {
     constructor(x: number, y: number);
+    x: number;
+    y: number;
+  }
+  interface MapProjection {
+    pointFromCoords(latlng: LatLng): Point;
+    coordsFromPoint(point: Point): LatLng;
   }
   interface MapOptions {
     center: LatLng;
@@ -27,6 +33,7 @@ declare namespace kakao.maps {
     getLevel(): number;
     setLevel(level: number, options?: { anchor?: LatLng; animate?: boolean | { duration: number } }): void;
     panTo(latlng: LatLng): void;
+    getProjection(): MapProjection;
     setCenter(latlng: LatLng): void;
     setMinLevel(level: number): void;
     setMaxLevel(level: number): void;

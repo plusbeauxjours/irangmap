@@ -41,9 +41,11 @@ interface Props {
   selected: Venue | null;
   onBoundsChange: (b: Bounds) => void;
   onSelect: (id: number) => void;
+  /** 모바일 바텀시트가 지도 아래를 가리는 높이(px). */
+  bottomInset?: number;
 }
 
-export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect }: Props) {
+export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect, bottomInset = 0 }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   // 데이터 fetch와 지도 load의 순서가 보장되지 않으므로 state로 두고 effect를 다시 돌린다.
@@ -52,6 +54,8 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
   const labelsRef = useRef<Map<number, Marker>>(new Map());
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
+  const insetRef = useRef(bottomInset);
+  insetRef.current = bottomInset;
 
   // 지도 생성 (1회)
   useEffect(() => {
@@ -244,7 +248,7 @@ export function MapView({ venues, hoveredId, selected, onBoundsChange, onSelect 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selected) return;
-    map.flyTo({ center: [selected.lon, selected.lat], zoom: Math.max(map.getZoom(), 15), speed: 1.4 });
+    map.flyTo({ center: [selected.lon, selected.lat], zoom: Math.max(map.getZoom(), 15), speed: 1.4, padding: { bottom: insetRef.current } });
   }, [selected]);
 
   return (

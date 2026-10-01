@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { applyOverrides, type Override } from "@/lib/overrides";
 import { DEFAULT_FILTERS, filterVenues, inBounds, parseVenues, type Bounds, type Filters, type Venue } from "@/lib/venues";
@@ -14,6 +14,11 @@ import { VenueDetail } from "./VenueDetail";
 import { VenueList } from "./VenueList";
 
 const KO_COLLATOR = new Intl.Collator("ko");
+
+/** 모바일 바텀시트 높이 스냅(화면 높이 대비): 접힘·중간·펼침. */
+const SNAPS = [0.22, 0.5, 0.9];
+const SHEET_MIN = 0.16;
+const SHEET_MAX = 0.92;
 
 /** 데이터가 아직 fetch되기 전(venues.length === 0) 리스트 자리에 보이는 뼈대. */
 function ListSkeleton() {
@@ -54,6 +59,11 @@ export function Explorer({ authEnabled = false, reportsEnabled = false, reviewsE
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [snap, setSnap] = useState(1);
+  const [dragH, setDragH] = useState<number | null>(null);
+  const [bottomInset, setBottomInset] = useState(0);
+  const sheetRef = useRef<HTMLElement>(null);
+  const drag = useRef<{ y: number; h: number; last: number; moved: boolean } | null>(null);
 
   useEffect(() => {
     fetch("/data/venues.geojson")
@@ -104,15 +114,76 @@ export function Explorer({ authEnabled = false, reportsEnabled = false, reviewsE
   }, []);
 
   const onBoundsChange = useCallback((b: Bounds) => setBounds(b), []);
-  const onSelect = useCallback((id: number) => setSelectedId(id), []);
+  // 터치에는 mouseleave가 없어 목록이 사라져도 hover가 남는다 → 선택 시 함께 해제
+  const onSelect = useCallback((id: number) => {
+    setHoveredId(null);
+    setSelectedId(id);
+    setSnap((s) => (s === 0 ? 1 : s)); // 접힌 시트에서 지도 마커를 눌렀으면 상세가 보이게 올린다
+  }, []);
+
+  // 지도가 시트에 가려지는 높이(px) — 선택한 업소를 보이는 영역 가운데로 옮기는 데 쓴다. md 이상은 0.
+  useEffect(() => {
+    const update = () => setBottomInset(window.matchMedia("(min-width: 768px)").matches ? 0 : Math.round(SNAPS[snap] * window.innerHeight));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [snap]);
+
+  const clampH = (h: number) => Math.min(Math.max(h, SHEET_MIN * window.innerHeight), SHEET_MAX * window.innerHeight);
+  const onHandleDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const h = sheetRef.current?.offsetHeight ?? 0;
+    drag.current = { y: e.clientY, h, last: h, moved: false };
+  };
+  const onHandleMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    const dy = d.y - e.clientY;
+    if (Math.abs(dy) > 6) d.moved = true;
+    if (!d.moved) return;
+    d.last = clampH(d.h + dy);
+    setDragH(d.last);
+  };
+  const onHandleUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    if (!d.moved) {
+      setSnap((s) => (s + 1) % SNAPS.length); // 탭: 접힘→중간→펼침→접힘
+    } else {
+      const frac = d.last / window.innerHeight;
+      setSnap(SNAPS.reduce((best, v, i) => (Math.abs(v - frac) < Math.abs(SNAPS[best] - frac) ? i : best), 0));
+    }
+    setDragH(null);
+  };
+
+  // 목록을 스크롤한 채 업소를 고르면 상세가 중간부터 열리므로 맨 위로
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (selectedId !== null) scrollRef.current?.scrollTo({ top: 0 });
+  }, [selectedId]);
 
   return (
-    <div className="grid h-screen grid-rows-[45vh_1fr] md:grid-cols-[420px_1fr] md:grid-rows-1">
-      <aside className="order-2 flex min-h-0 flex-col overflow-hidden rounded-t-card bg-white shadow-sheet md:order-1 md:rounded-none md:border-r md:border-neutral-200 md:shadow-none">
-        {/* 모바일: 지도 위에 얹힌 바텀시트처럼 보이도록 손잡이 표시 */}
-        <div className="flex shrink-0 justify-center pb-1 pt-2 md:hidden">
-          <span className="h-1 w-9 rounded-full bg-neutral-200" aria-hidden="true" />
-        </div>
+    <div className="relative h-dvh overflow-hidden md:grid md:grid-cols-[420px_1fr] md:grid-rows-1">
+      <aside
+        ref={sheetRef}
+        style={{ "--sheet-h": dragH !== null ? `${dragH}px` : `${SNAPS[snap] * 100}dvh` } as React.CSSProperties}
+        className={`absolute inset-x-0 bottom-0 z-10 flex h-(--sheet-h) min-h-0 flex-col overflow-hidden rounded-t-card bg-white shadow-sheet md:static md:h-auto md:rounded-none md:border-r md:border-neutral-200 md:shadow-none ${
+          dragH === null ? "transition-[height] duration-200 ease-out" : ""
+        }`}
+      >
+        {/* 모바일: 바텀시트 손잡이 — 끌어서 높이 조절, 탭하면 단계 전환 */}
+        <button
+          type="button"
+          onPointerDown={onHandleDown}
+          onPointerMove={onHandleMove}
+          onPointerUp={onHandleUp}
+          onPointerCancel={onHandleUp}
+          aria-label="목록 높이 조절"
+          className="flex h-6 shrink-0 cursor-grab touch-none items-center justify-center md:hidden"
+        >
+          <span className="h-1 w-9 rounded-full bg-neutral-300" aria-hidden="true" />
+        </button>
         <header className="flex flex-col gap-1 px-4 pb-1 pt-1 md:pb-3 md:pt-4">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
@@ -129,7 +200,7 @@ export function Explorer({ authEnabled = false, reportsEnabled = false, reviewsE
         </header>
         <FiltersBar filters={filters} onChange={setFilters} total={venues.length} visible={visible.length} />
         {error && <p className="m-4 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm text-brand-700">{error}</p>}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {selected ? (
             <VenueDetail venue={selected} onBack={() => setSelectedId(null)} reportsEnabled={reportsEnabled} reviewsEnabled={reviewsEnabled} />
           ) : venues.length === 0 && !error ? (
@@ -138,19 +209,19 @@ export function Explorer({ authEnabled = false, reportsEnabled = false, reviewsE
             <VenueList venues={visible} hoveredId={hoveredId} selectedId={selectedId} onHover={setHoveredId} onSelect={onSelect} />
           )}
         </div>
-        <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-neutral-200 px-4 py-2 text-[11px] text-neutral-500">
-          <Link href="/about" className="hover:text-neutral-900">소개·데이터 출처</Link>
-          <Link href="/terms" className="hover:text-neutral-900">이용약관</Link>
-          <Link href="/privacy" className="hover:text-neutral-900">개인정보처리방침</Link>
-          <a href="mailto:plusbeauxjours@gmail.com" className="hover:text-neutral-900">문의·제보</a>
+        <footer className="flex flex-wrap items-center gap-x-3 border-t border-neutral-200 px-4 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] text-[11px] text-neutral-500">
+          <Link href="/about" className="py-2 hover:text-neutral-900">소개·데이터 출처</Link>
+          <Link href="/terms" className="py-2 hover:text-neutral-900">이용약관</Link>
+          <Link href="/privacy" className="py-2 hover:text-neutral-900">개인정보처리방침</Link>
+          <a href="mailto:plusbeauxjours@gmail.com" className="py-2 hover:text-neutral-900">문의·제보</a>
           <span className="ml-auto text-neutral-400">지도 © Kakao</span>
         </footer>
       </aside>
-      <main className="order-1 min-h-0 md:order-2">
+      <main className="absolute inset-0 md:static md:min-h-0">
         {USE_KAKAO ? (
-          <KakaoMapView venues={filtered} hoveredId={hoveredId} selected={selected} onBoundsChange={onBoundsChange} onSelect={onSelect} />
+          <KakaoMapView venues={filtered} hoveredId={hoveredId} selected={selected} onBoundsChange={onBoundsChange} onSelect={onSelect} bottomInset={bottomInset} />
         ) : (
-          <MapView venues={filtered} hoveredId={hoveredId} selected={selected} onBoundsChange={onBoundsChange} onSelect={onSelect} />
+          <MapView venues={filtered} hoveredId={hoveredId} selected={selected} onBoundsChange={onBoundsChange} onSelect={onSelect} bottomInset={bottomInset} />
         )}
       </main>
     </div>

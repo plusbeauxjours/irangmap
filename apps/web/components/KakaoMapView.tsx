@@ -11,6 +11,8 @@ interface Props {
   selected: Venue | null;
   onBoundsChange: (b: Bounds) => void;
   onSelect: (id: number) => void;
+  /** 모바일 바텀시트가 지도 아래를 가리는 높이(px). */
+  bottomInset?: number;
 }
 
 const KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY ?? "";
@@ -58,7 +60,7 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
 }
 
-export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSelect }: Props) {
+export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSelect, bottomInset = 0 }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const clustererRef = useRef<kakao.maps.MarkerClusterer | null>(null);
@@ -72,6 +74,8 @@ export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSe
   onSelectRef.current = onSelect;
   const onBoundsRef = useRef(onBoundsChange);
   onBoundsRef.current = onBoundsChange;
+  const insetRef = useRef(bottomInset);
+  insetRef.current = bottomInset;
   const selectedRef = useRef<Venue | null>(selected);
   selectedRef.current = selected;
   const [ready, setReady] = useState(false);
@@ -206,7 +210,11 @@ export function KakaoMapView({ venues, hoveredId, selected, onBoundsChange, onSe
     if (!map || !selected) return;
     const pos = new kakao.maps.LatLng(selected.lat, selected.lon);
     if (map.getLevel() > LEVEL_DETAIL) map.setLevel(LEVEL_DETAIL, { anchor: pos });
-    map.panTo(pos);
+    // 시트에 가려진 만큼 위로 옮겨, 보이는 지도 영역의 가운데에 오게 한다
+    const proj = map.getProjection();
+    const pt = proj.pointFromCoords(pos);
+    pt.y += insetRef.current / 2;
+    map.panTo(proj.coordsFromPoint(pt));
   }, [selected]);
 
   return (

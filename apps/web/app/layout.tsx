@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import "./globals.css";
@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: "아이랑맵 — 전국 키즈카페 지도",
   description: "아이랑 갈 키즈카페를 이용 연령·요금·양말 규정·예약까지 출처와 확인일이 붙은 정보로 고르는 전국 지도",
 };
+
+// viewport-fit=cover: 노치·홈 인디케이터 영역까지 그리고, 하단은 env(safe-area-inset-bottom)로 피한다
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#ffffff" };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
